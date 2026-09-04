@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  hashedPassword String
+  role           String   @default("client")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  assignedPrograms Program[]        @relation("ProgramClient")
+  workoutLogs      WorkoutLog[]
+  bodyWeightLogs   BodyWeightLog[]
+
+  @@map("users")
+}
+
+model Exercise {
+  id          String   @id @default(cuid())
+  name        String
+  muscleGroup String
+  equipment   String?
+  description String?
+  photoUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workoutExercises WorkoutExercise[]
+
+  @@map("exercises")
+}
+
+model BodyWeightLog {
+  id        String   @id @default(cuid())
+  clientId  String
+  weight    Float
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  client User @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, date])
+  @@map("body_weight_logs")
+}
+
+model Program {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  clientId    String?
+  status      String    @default("active")
+  startDate   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  client User? @relation("ProgramClient", fields: [clientId], references: [id], onDelete: SetNull)
+  weeks  Week[]
+
+  @@index([clientId])
+  @@map("programs")
+}
+
+model Week {
+  id         String @id @default(cuid())
+  programId  String
+  weekNumber Int
+  name       String?
+
+  program Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  days    WorkoutDay[]
+
+  @@unique([programId, weekNumber])
+  @@map("weeks")
+}
+
+model WorkoutDay {
+  id       String @id @default(cuid())
+  weekId   String
+  dayName  String
+  dayOrder Int
+
+  week      Week              @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  exercises WorkoutExercise[]
+
+  @@unique([weekId, dayOrder])
+  @@map("workout_days")
+}
+
+model WorkoutExercise {
+  id         String  @id @default(cuid())
+  dayId      String
+  exerciseId String
+  sortOrder  Int
+  sets       Int
+  reps       String
+  restSec    Int?
+  rpe        String?
+  notes      String?
+
+  day      WorkoutDay    @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  exercise Exercise      @relation(fields: [exerciseId], references: [id])
+  logs     WorkoutLog[]
+
+  @@unique([dayId, exerciseId])
+  @@map("workout_exercises")
+}
+
+model WorkoutLog {
+  id                String   @id @default(cuid())
+  clientId          String
+  workoutExerciseId String
+  date              DateTime @default(now())
+  loggedSets        String?
+  notes             String?
+  completed         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  client          User            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  workoutExercise WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, workoutExerciseId, date])
+  @@index([clientId, date])
+  @@map("workout_logs")
+}
