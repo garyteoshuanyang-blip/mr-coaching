@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, UserCheck } from "lucide-react"
+import { getUser, authFetch } from "@/lib/client-auth"
 
 function AssignForm() {
   const router = useRouter(); const params = useSearchParams()
@@ -11,9 +12,9 @@ function AssignForm() {
   const [programs, setPrograms] = useState<any[]>([]); const [clients, setClients] = useState<any[]>([])
   const [selProg, setSelProg] = useState(programId||""); const [selCli, setSelCli] = useState(clientId||""); const [saving, setSaving] = useState(false)
 
-  useEffect(()=>{fetch("/api/programs").then(r=>r.json()).then(d=>setPrograms(d.programs.filter((p:any)=>!p.clientId)));fetch("/api/clients").then(r=>r.json()).then(d=>setClients(d.clients||[]))},[])
+  useEffect(()=>{if (!getUser()) window.location.href = "/admin/login"; authFetch("/api/programs").then(r=>r.json()).then(d=>setPrograms(d.programs.filter((p:any)=>!p.clientId)));authFetch("/api/clients").then(r=>r.json()).then(d=>setClients(d.clients||[]))},[])
 
-  const handleAssign=async()=>{if(!selProg||!selCli)return;setSaving(true);const res=await fetch("/api/programs/assign",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({programId:selProg,clientId:selCli})});if(res.ok)router.push(clientId?`/admin/clients/${selCli}`:"/admin/programs");else{alert("Failed");setSaving(false)}}
+  const handleAssign=async()=>{if(!selProg||!selCli)return;setSaving(true);const res=await authFetch("/api/programs/assign",{method:"POST",body:JSON.stringify({programId:selProg,clientId:selCli})});if(res.ok)router.push(clientId?`/admin/clients/${selCli}`:"/admin/programs");else{alert("Failed");setSaving(false)}}
 
   return (
     <div className="bg-white rounded-xl border p-4 space-y-4">

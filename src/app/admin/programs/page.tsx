@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Plus, ArrowLeft, Search, FileText, Users } from "lucide-react"
+import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function ProgramListPage() {
   const [programs, setPrograms] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
 
-  useEffect(()=>{fetch("/api/programs").then(r=>r.json()).then(d=>{setPrograms(d.programs||[]);setLoading(false)})},[])
+  useEffect(()=>{if (!getUser()) window.location.href = "/admin/login"; authFetch("/api/programs").then(r=>r.json()).then(d=>{setPrograms(d.programs||[]);setLoading(false)})},[])
 
   const filtered = programs.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
   const templates = filtered.filter(p=>!p.clientId)

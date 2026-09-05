@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Save } from "lucide-react"
+import { getUser, authFetch } from "@/lib/client-auth"
 
 const MG = ["chest","back","legs","shoulders","arms","core","cardio","full_body","glutes","calves"]
 const EQ = ["","barbell","dumbbell","kettlebell","bodyweight","machine","cable","band"]
@@ -18,7 +19,7 @@ export default function NewExercisePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true)
-    const res = await fetch("/api/exercises", {
+    if (!getUser()) return; const res = await authFetch("/api/exercises", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, muscleGroup, equipment: equipment || null, description: description || null }),
     })

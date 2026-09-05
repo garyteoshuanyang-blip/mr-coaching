@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Plus, Search, ArrowLeft } from "lucide-react"
+import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function ExerciseListPage() {
   const [exercises, setExercises] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetch("/api/exercises").then(r => r.json()).then(d => { setExercises(d.exercises || []); setLoading(false) }) }, [])
+  useEffect(() => { if (!getUser()) window.location.href = "/admin/login"; authFetch("/api/exercises").then(r => r.json()).then(d => { setExercises(d.exercises || []); setLoading(false) }) }, [])
 
   const filtered = exercises.filter(e => e.name.toLowerCase().includes(search.toLowerCase()) || e.muscleGroup.toLowerCase().includes(search.toLowerCase()))
   const muscleGroups = [...new Set(exercises.map(e => e.muscleGroup))].sort()

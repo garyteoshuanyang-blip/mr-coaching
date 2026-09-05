@@ -3,17 +3,18 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Trash2, Edit3, Users } from "lucide-react"
+import { ArrowLeft, Trash2, Edit3, Users, CheckCircle, XCircle } from "lucide-react"
+import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function ProgramDetailPage() {
   const params = useParams(); const router = useRouter()
   const [program, setProgram] = useState<any>(null); const [loading, setLoading] = useState(true)
   const [editMode, setEditMode] = useState(false); const [name, setName] = useState(""); const [description, setDescription] = useState(""); const [status, setStatus] = useState("")
 
-  useEffect(()=>{fetch(`/api/programs/${params.id}`).then(r=>r.json()).then(d=>{setProgram(d);setName(d.name);setDescription(d.description||"");setStatus(d.status);setLoading(false)})},[params.id])
+  useEffect(()=>{if (!getUser()) window.location.href = "/admin/login"; authFetch(`/api/programs/${params.id}`).then(r=>r.json()).then(d=>{setProgram(d);setName(d.name);setDescription(d.description||"");setStatus(d.status);setLoading(false)})},[params.id])
 
-  const handleSave=async()=>{const res=await fetch(`/api/programs/${params.id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,description,status})});if(res.ok){setEditMode(false);setProgram((p:any)=>({...p,name,description,status}))}else alert("Failed")}
-  const handleDelete=async()=>{if(!confirm("Delete?"))return;await fetch(`/api/programs/${params.id}`,{method:"DELETE"});router.push("/admin/programs")}
+  const handleSave=async()=>{const res=await authFetch(`/api/programs/${params.id}`,{method:"PUT",body:JSON.stringify({name,description,status})});if(res.ok){setEditMode(false);setProgram((p:any)=>({...p,name,description,status}))}else alert("Failed")}
+  const handleDelete=async()=>{if(!confirm("Delete?"))return;await authFetch(`/api/programs/${params.id}`,{method:"DELETE"});router.push("/admin/programs")}
 
   if(loading)return<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Loading...</p></div>
   if(!program)return<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Not found</p></div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Save, Trash2 } from "lucide-react"
+import { getUser, authFetch } from "@/lib/client-auth"
 
 const MG = ["chest","back","legs","shoulders","arms","core","cardio","full_body","glutes","calves"]
 const EQ = ["","barbell","dumbbell","kettlebell","bodyweight","machine","cable","band"]
@@ -13,10 +14,10 @@ export default function EditExercisePage() {
   const [name,setName]=useState(""); const [muscleGroup,setMuscleGroup]=useState(""); const [equipment,setEquipment]=useState(""); const [description,setDescription]=useState("")
   const [saving,setSaving]=useState(false); const [loading,setLoading]=useState(true)
 
-  useEffect(() => { fetch(`/api/exercises/${params.id}`).then(r=>r.json()).then(e=>{setName(e.name);setMuscleGroup(e.muscleGroup);setEquipment(e.equipment||"");setDescription(e.description||"");setLoading(false)}) },[params.id])
+  useEffect(() => { if (!getUser()) window.location.href = "/admin/login"; authFetch(`/api/exercises/${params.id}`).then(r=>r.json()).then(e=>{setName(e.name);setMuscleGroup(e.muscleGroup);setEquipment(e.equipment||"");setDescription(e.description||"");setLoading(false)}) },[params.id])
 
-  const handleSubmit=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);const res=await fetch(`/api/exercises/${params.id}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,muscleGroup,equipment:equipment||null,description:description||null})});if(res.ok)router.push("/admin/exercises");else{alert("Failed");setSaving(false)}}
-  const handleDelete=async()=>{if(!confirm("Delete?"))return;await fetch(`/api/exercises/${params.id}`,{method:"DELETE"});router.push("/admin/exercises")}
+  const handleSubmit=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);const res=await authFetch(`/api/exercises/${params.id}`,{method:"PUT",body:JSON.stringify({name,muscleGroup,equipment:equipment||null,description:description||null})});if(res.ok)router.push("/admin/exercises");else{alert("Failed");setSaving(false)}}
+  const handleDelete=async()=>{if(!confirm("Delete?"))return;await authFetch(`/api/exercises/${params.id}`,{method:"DELETE"});router.push("/admin/exercises")}
 
   if(loading)return<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Loading...</p></div>
   return (

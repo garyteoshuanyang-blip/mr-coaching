@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus, Save, X } from "lucide-react"
+import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function NewProgramPage() {
   const router = useRouter()
@@ -15,7 +16,7 @@ export default function NewProgramPage() {
   const [picker, setPicker] = useState<{wi:number;di:number}|null>(null)
   const [searchTerm, setSearchTerm] = useState("")
 
-  useEffect(()=>{fetch("/api/exercises").then(r=>r.json()).then(d=>setExercises(d.exercises||[]))},[])
+  useEffect(()=>{if (!getUser()) window.location.href = "/admin/login"; authFetch("/api/exercises").then(r=>r.json()).then(d=>setExercises(d.exercises||[]))},[])
 
   const filtered = exercises.filter(e=>e.name.toLowerCase().includes(searchTerm.toLowerCase())||e.muscleGroup.toLowerCase().includes(searchTerm.toLowerCase()))
 
@@ -27,7 +28,7 @@ export default function NewProgramPage() {
   const removeEx = (wi:number, di:number, ei:number) => { const w=[...weeks]; w[wi].days[di].exercises=w[wi].days[di].exercises.filter((_,i)=>i!==ei).map((e,i)=>({...e,sortOrder:i+1})); setWeeks(w) }
   const updEx = (wi:number, di:number, ei:number, f:string, v:any) => { const w=[...weeks]; (w[wi].days[di].exercises[ei] as any)[f]=v; setWeeks(w) }
 
-  const handleSubmit=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);const res=await fetch("/api/programs",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,description:description||null,weeks})});if(res.ok){const d=await res.json();router.push(`/admin/programs/${d.program.id}`)}else{alert("Failed");setSaving(false)}}
+  const handleSubmit=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);const res=await authFetch("/api/programs",{method:"POST",body:JSON.stringify({name,description:description||null,weeks})});if(res.ok){const d=await res.json();router.push(`/admin/programs/${d.program.id}`)}else{alert("Failed");setSaving(false)}}
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">

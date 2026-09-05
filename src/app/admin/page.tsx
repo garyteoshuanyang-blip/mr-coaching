@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { signOut } from "next-auth/react"
 import Link from "next/link"
 import { Dumbbell, Users, FileText, LogOut, TrendingUp, Menu, X } from "lucide-react"
+import { getUser, authFetch, logout } from "@/lib/client-auth"
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: TrendingUp },
@@ -18,9 +18,12 @@ export default function AdminDashboard() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    fetch("/api/auth/session").then(r => r.json()).then(s => setUser(s?.user))
-    fetch("/api/admin/dashboard").then(r => r.json()).then(setData)
+    setUser(getUser())
+    if (!getUser()) window.location.href = "/admin/login"
+    authFetch("/api/admin/dashboard").then(r => r.json()).then(setData)
   }, [])
+
+  const handleLogout = () => { logout(); window.location.href = "/admin/login" }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -28,7 +31,7 @@ export default function AdminDashboard() {
         <h1 className="font-bold text-lg text-blue-600">MR Coaching</h1>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500 hidden sm:block">{user?.name}</span>
-          <button onClick={() => signOut({ callbackUrl: "/login" })} className="p-2 text-gray-400 hover:text-red-500"><LogOut size={18} /></button>
+          <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500"><LogOut size={18} /></button>
           <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 text-gray-400 md:hidden">{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         </div>
       </header>
@@ -43,10 +46,7 @@ export default function AdminDashboard() {
       <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-56 md:flex-col md:pt-14">
         <nav className="flex-1 bg-white border-r px-3 py-4 space-y-1">
           {NAV.map(item => (
-            <Link key={item.href} href={item.href}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">
-              {<item.icon size={18} />} {item.label}
-            </Link>
+            <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">{<item.icon size={18} />} {item.label}</Link>
           ))}
         </nav>
       </aside>
