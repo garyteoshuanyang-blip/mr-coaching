@@ -1,2 +1,2 @@
 import { redirect } from "next/navigation"
-export default function Home() { redirect("/admin/login") }
+export default function Home() { redirect("/client/access") }
