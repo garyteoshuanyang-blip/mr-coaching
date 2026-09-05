@@ -18,10 +18,20 @@ export default function ClientProgramDetailPage() {
     authFetch(`/api/programs/${params.id}`).then(r => r.json()).then(data => {
       setProgram(data)
       const initial: Record<string, any[]> = {}
-      data.weeks?.forEach((w: any) => w.days?.forEach((d: any) => d.exercises?.forEach((ex: any) => {
-        const latestLog = ex.logs?.find((l: any) => l.completed)
-        if (latestLog?.loggedSets) initial[ex.id] = JSON.parse(latestLog.loggedSets)
-      }))
+      if (data.weeks) {
+        for (const w of data.weeks) {
+          if (w.days) {
+            for (const d of w.days) {
+              if (d.exercises) {
+                for (const ex of d.exercises) {
+                  const latestLog = ex.logs?.find((l: any) => l.completed)
+                  if (latestLog?.loggedSets) initial[ex.id] = JSON.parse(latestLog.loggedSets)
+                }
+              }
+            }
+          }
+        }
+      }
       setSetsData(initial)
       setLoading(false)
     })
@@ -41,7 +51,7 @@ export default function ClientProgramDetailPage() {
     setSetsData(newSets)
   }
 
-  const updateSet = (exerciseId: string, setIdx: number, field: string, value: number) => {
+  const updateSet = (exerciseId: string, setIdx: number, field: string, value: number | undefined) => {
     const newSets = { ...setsData }; const exerciseSets = [...(newSets[exerciseId] || [])]; exerciseSets[setIdx] = { ...exerciseSets[setIdx], [field]: value }; newSets[exerciseId] = exerciseSets; setSetsData(newSets)
   }
 
