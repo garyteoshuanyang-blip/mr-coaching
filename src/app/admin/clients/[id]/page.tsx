@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Trash2, Plus, Edit3, Check, X, Copy } from "lucide-react"
+import { ArrowLeft, Trash2, Plus, Edit3, Check, X, Copy, FileText } from "lucide-react"
 import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function ClientDetailPage() {
@@ -70,7 +70,10 @@ export default function ClientDetailPage() {
 
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-sm">Programs</h2>
-          <Link href={`/admin/programs/assign?clientId=${params.id}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1"><Plus size={14}/>Assign</Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/programs/new" className="text-sm text-purple-600 hover:underline flex items-center gap-1"><FileText size={14}/>New</Link>
+            <Link href={`/admin/programs/assign?clientId=${params.id}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1"><Plus size={14}/>Assign</Link>
+          </div>
         </div>
         {data.assignedPrograms?.length > 0 ? <div className="space-y-2">{data.assignedPrograms.map((p: any) => (
           <Link key={p.id} href={`/admin/programs/${p.id}`} className="flex items-center justify-between bg-white rounded-lg border p-4 hover:shadow-sm">
