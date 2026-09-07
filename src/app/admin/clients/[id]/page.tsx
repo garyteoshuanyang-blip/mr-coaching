@@ -79,10 +79,7 @@ export default function ClientDetailPage() {
 
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-sm">Programs</h2>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/programs/new" className="text-sm text-purple-600 hover:underline flex items-center gap-1"><FileText size={14}/>New</Link>
-            <Link href={`/admin/programs/assign?clientId=${params.id}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1"><Plus size={14}/>Assign</Link>
-          </div>
+          <Link href={`/admin/programs/new?clientId=${params.id}`} className="text-sm text-purple-600 hover:underline flex items-center gap-1"><FileText size={14}/>New Program</Link>
         </div>
         {data.assignedPrograms?.length > 0 ? <div className="space-y-2">{data.assignedPrograms.map((p: any) => {
           const startDate = p.startDate ? new Date(p.startDate) : null

@@ -1,13 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus, Save, X, Copy, Check } from "lucide-react"
 import { getUser, authFetch } from "@/lib/client-auth"
 
-export default function NewProgramPage() {
+function NewProgramForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const clientId = searchParams.get("clientId")
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [weeks, setWeeks] = useState([{ weekNumber: 1, name: "Week 1", days: [{ dayName: "Day 1", dayOrder: 1, exercises: [] as any[] }] }])
@@ -66,7 +68,21 @@ export default function NewProgramPage() {
   const removeEx = (wi:number, di:number, ei:number) => { const w=[...weeks]; w[wi].days[di].exercises=w[wi].days[di].exercises.filter((_,i)=>i!==ei).map((e,i)=>({...e,sortOrder:i+1})); setWeeks(w) }
   const updEx = (wi:number, di:number, ei:number, f:string, v:any) => { const w=[...weeks]; (w[wi].days[di].exercises[ei] as any)[f]=v; setWeeks(w) }
 
-  const handleSubmit=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);const res=await authFetch("/api/programs",{method:"POST",body:JSON.stringify({name,description:description||null,weeks})});if(res.ok){const d=await res.json();router.push(`/admin/programs/${d.program.id}`)}else{alert("Failed");setSaving(false)}}
+  const handleSubmit=async(e:React.FormEvent)=>{
+    e.preventDefault();setSaving(true)
+    const res=await authFetch("/api/programs",{method:"POST",body:JSON.stringify({name,description:description||null,weeks})})
+    if(!res.ok){alert("Failed");setSaving(false);return}
+    const d=await res.json()
+    const programId=d.program.id
+
+    if(clientId){
+      // Auto-assign to the client
+      await authFetch("/api/programs/assign",{method:"POST",body:JSON.stringify({programId,clientId})})
+      router.push(`/admin/clients/${clientId}`)
+    }else{
+      router.push(`/admin/programs/${programId}`)
+    }
+  }
 
   const toggleSelect = (id: string) => {
     const next = new Set(selectedEx)
@@ -76,7 +92,7 @@ export default function NewProgramPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 md:pb-4">
-      <header className="bg-white border-b sticky top-0 z-50 px-4 h-14 flex items-center"><div className="flex items-center gap-3"><Link href="/admin/programs" className="p-1 hover:bg-gray-100"><ArrowLeft size={20} className="text-gray-500"/></Link><h1 className="font-semibold">New Program</h1></div></header>
+      <header className="bg-white border-b sticky top-0 z-50 px-4 h-14 flex items-center"><div className="flex items-center gap-3"><Link href={clientId ? `/admin/clients/${clientId}` : "/admin/programs"} className="p-1 hover:bg-gray-100"><ArrowLeft size={20} className="text-gray-500"/></Link><h1 className="font-semibold">New Program{clientId ? " for Client" : ""}</h1></div></header>
       <form onSubmit={handleSubmit} className="p-4 max-w-4xl mx-auto space-y-4">
         <div className="bg-white rounded-xl border p-4 space-y-3">
           <div><label className="block text-sm font-medium mb-1">Name *</label><input type="text" value={name} onChange={e=>setName(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" required/></div>
@@ -180,4 +196,8 @@ export default function NewProgramPage() {
       </div>}
     </div>
   )
+}
+
+export default function NewProgramPage() {
+  return <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Loading...</p></div>}><NewProgramForm /></Suspense>
 }
