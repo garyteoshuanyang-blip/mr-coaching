@@ -16,8 +16,15 @@ export default function NewProgramPage() {
   const [picker, setPicker] = useState<{wi:number;di:number}|null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedEx, setSelectedEx] = useState<Set<string>>(new Set())
+  const [duration, setDuration] = useState(1)
 
   useEffect(()=>{if (!getUser()) window.location.href = "/admin/login"; authFetch("/api/exercises").then(r=>r.json()).then(d=>setExercises(d.exercises||[]))},[])
+
+  const makeWeek = (n: number) => ({ weekNumber: n, name: `Week ${n}`, days: [{ dayName: "Day 1", dayOrder: 1, exercises: [] as any[] }] })
+
+  useEffect(() => {
+    setWeeks(Array.from({ length: duration }, (_, i) => makeWeek(i + 1)))
+  }, [duration])
 
   const filtered = exercises.filter(e=>e.name.toLowerCase().includes(searchTerm.toLowerCase())||e.muscleGroup.toLowerCase().includes(searchTerm.toLowerCase()))
 
@@ -74,6 +81,18 @@ export default function NewProgramPage() {
         <div className="bg-white rounded-xl border p-4 space-y-3">
           <div><label className="block text-sm font-medium mb-1">Name *</label><input type="text" value={name} onChange={e=>setName(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" required/></div>
           <div><label className="block text-sm font-medium mb-1">Description</label><textarea value={description} onChange={e=>setDescription(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-lg text-sm"/></div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Duration</label>
+            <div className="flex gap-1.5">
+              {[1,2,3,4,5,6,7,8].map(n => (
+                <button key={n} type="button" onClick={() => setDuration(n)}
+                  className={`w-9 h-9 rounded-lg text-sm font-medium ${
+                    duration === n ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}>{n}</button>
+              ))}
+              <span className="text-xs text-gray-400 self-center ml-1">weeks</span>
+            </div>
+          </div>
         </div>
         {weeks.map((week,wi)=>(
           <div key={wi} className="bg-white rounded-xl border overflow-hidden">
