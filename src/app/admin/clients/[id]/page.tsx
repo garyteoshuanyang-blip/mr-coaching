@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Trash2, Plus, Edit3, Check, X, Copy, FileText } from "lucide-react"
+import { ArrowLeft, Trash2, Plus, Edit3, Check, X, Copy, FileText, ExternalLink } from "lucide-react"
 import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function ClientDetailPage() {
   const params = useParams(); const router = useRouter()
   const [data, setData] = useState<any>(null); const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false); const [editName, setEditName] = useState(""); const [editSlug, setEditSlug] = useState("")
-  const [saving, setSaving] = useState(false); const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false); const [copied, setCopied] = useState(false); const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     if (!getUser()) window.location.href = "/admin/login"
@@ -28,6 +28,10 @@ export default function ClientDetailPage() {
   }
 
   const copySlug = () => { navigator.clipboard.writeText(data.clientSlug); setCopied(true); setTimeout(() => setCopied(false), 2000) }
+  const copyLink = () => {
+    const link = `${window.location.origin}/client/link/${data.clientSlug}`
+    navigator.clipboard.writeText(link); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000)
+  }
 
   if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Loading...</p></div>
   if (!data) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Not found</p></div>
@@ -43,7 +47,7 @@ export default function ClientDetailPage() {
           <button onClick={handleDelete} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={18}/></button>
         </div>
       </header>
-      <div className="p-4 max-w-4xl mx-auto space-y-4">
+      <div className="p-4 max-w-4xl mx-auto space-y-4 pb-20 md:pb-4">
         {/* Info card */}
         <div className="bg-white rounded-xl border p-4">
           {editing ? (
@@ -57,11 +61,16 @@ export default function ClientDetailPage() {
             </div>
           ) : (
             <>
-              <p className="text-sm text-gray-500">{data.clientSlug ? `${data.clientSlug}` : "No slug set"}</p>
+              <p className="text-sm text-gray-500">{data.clientSlug ? `Slug: ${data.clientSlug}` : "No slug set"}</p>
               {data.clientSlug && (
-                <button onClick={copySlug} className="text-xs flex items-center gap-1 mt-1 px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-500">
-                  <Copy size={12}/> {copied ? "Copied!" : "Copy login slug"}
-                </button>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <button onClick={copySlug} className="text-xs flex items-center gap-1 px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-500">
+                    <Copy size={12}/> {copied ? "Copied!" : "Copy slug"}
+                  </button>
+                  <button onClick={copyLink} className="text-xs flex items-center gap-1 px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-600">
+                    <ExternalLink size={12}/> {linkCopied ? "Copied!" : "Copy login link"}
+                  </button>
+                </div>
               )}
               {bw.length > 0 && <p className="text-sm mt-2">Last weight: <span className="font-medium">{bw[0].weight} kg</span></p>}
             </>
@@ -75,12 +84,25 @@ export default function ClientDetailPage() {
             <Link href={`/admin/programs/assign?clientId=${params.id}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1"><Plus size={14}/>Assign</Link>
           </div>
         </div>
-        {data.assignedPrograms?.length > 0 ? <div className="space-y-2">{data.assignedPrograms.map((p: any) => (
-          <Link key={p.id} href={`/admin/programs/${p.id}`} className="flex items-center justify-between bg-white rounded-lg border p-4 hover:shadow-sm">
-            <div><p className="font-medium text-sm">{p.name}</p><p className="text-xs text-gray-400 capitalize">{p.status} · {p.weeks?.length || 0} weeks</p></div>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{p.status}</span>
-          </Link>
-        ))}</div> : <p className="text-sm text-gray-400">No programs assigned.</p>}
+        {data.assignedPrograms?.length > 0 ? <div className="space-y-2">{data.assignedPrograms.map((p: any) => {
+          const startDate = p.startDate ? new Date(p.startDate) : null
+          const daysSince = startDate ? Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24)) : null
+          return (
+            <Link key={p.id} href={`/admin/programs/${p.id}`} className="block bg-white rounded-lg border p-4 hover:shadow-sm">
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-medium text-sm">{p.name}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{p.status}</span>
+              </div>
+              <p className="text-xs text-gray-400">{p.weeks?.length || 0} weeks</p>
+              {startDate && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Started {startDate.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}
+                  {daysSince !== null && <span> · {daysSince}d ago</span>}
+                </p>
+              )}
+            </Link>
+          )
+        })}</div> : <p className="text-sm text-gray-400">No programs assigned.</p>}
       </div>
     </div>
   )
