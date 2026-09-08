@@ -52,7 +52,7 @@ function NewProgramForm() {
 
   const addEx = (wi:number, di:number, ex:any) => {
     const w=[...weeks]; const d=w[wi].days[di]
-    d.exercises.push({exerciseId:ex.id, exerciseName:ex.name, muscleGroup:ex.muscleGroup, sets:3, reps:"10", restSec:60, rpe:"", notes:"", sortOrder:d.exercises.length+1})
+    d.exercises.push({exerciseId:ex.id, exerciseName:ex.name, muscleGroup:ex.muscleGroup, sets:3, reps:"10", weight:"", restSec:60, rpe:"", notes:"", sortOrder:d.exercises.length+1})
     setWeeks(w)
   }
 
@@ -61,7 +61,7 @@ function NewProgramForm() {
     const w=[...weeks]; const d=w[picker.wi].days[picker.di]
     exercises.filter(e => selectedEx.has(e.id)).forEach(ex => {
       if (!d.exercises.find((x:any) => x.exerciseId === ex.id)) {
-        d.exercises.push({exerciseId:ex.id, exerciseName:ex.name, muscleGroup:ex.muscleGroup, sets:3, reps:"10", restSec:60, rpe:"", notes:"", sortOrder:d.exercises.length+1})
+        d.exercises.push({exerciseId:ex.id, exerciseName:ex.name, muscleGroup:ex.muscleGroup, sets:3, reps:"10", weight:"", restSec:60, rpe:"", notes:"", sortOrder:d.exercises.length+1})
       }
     })
     setWeeks(w)
@@ -163,6 +163,7 @@ function NewProgramForm() {
                           <div className="flex flex-wrap gap-2">
                             <div><label className="text-xs text-gray-500">Sets</label><input type="number" value={ex.sets} onChange={e=>updEx(wi,di,ei,"sets",parseInt(e.target.value)||1)} className="w-12 px-1 py-0.5 border rounded text-xs text-center" min={1}/></div>
                             <div><label className="text-xs text-gray-500">Reps</label><input type="text" value={ex.reps} onChange={e=>updEx(wi,di,ei,"reps",e.target.value)} className="w-14 px-1 py-0.5 border rounded text-xs text-center"/></div>
+                            <div><label className="text-xs text-gray-500">Weight</label><input type="text" value={ex.weight||""} onChange={e=>updEx(wi,di,ei,"weight",e.target.value)} className="w-16 px-1 py-0.5 border rounded text-xs text-center" placeholder="kg"/></div>
                             <div><label className="text-xs text-gray-500">Rest</label><select value={ex.restSec} onChange={e=>updEx(wi,di,ei,"restSec",parseInt(e.target.value))} className="w-16 px-1 py-0.5 border rounded text-xs"><option value={30}>30s</option><option value={60}>60s</option><option value={90}>90s</option><option value={120}>2m</option><option value={180}>3m</option></select></div>
                             <div><label className="text-xs text-gray-500">RPE</label><input type="text" value={ex.rpe} onChange={e=>updEx(wi,di,ei,"rpe",e.target.value)} className="w-12 px-1 py-0.5 border rounded text-xs text-center"/></div>
                           </div>

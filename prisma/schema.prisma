@@ -102,6 +102,7 @@ model WorkoutExercise {
   sortOrder  Int
   sets       Int
   reps       String
+  weight     String?
   restSec    Int?
   rpe        String?
   notes      String?

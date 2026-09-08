@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       dayName: d.dayName, dayOrder: d.dayOrder,
       exercises: { create: d.exercises.map((ex: any) => ({
         exerciseId: ex.exerciseId, sortOrder: ex.sortOrder,
-        sets: ex.sets, reps: ex.reps, restSec: ex.restSec, rpe: ex.rpe, notes: ex.notes,
+        sets: ex.sets, reps: ex.reps, weight: ex.weight, restSec: ex.restSec, rpe: ex.rpe, notes: ex.notes,
       })) },
     })) },
   }))

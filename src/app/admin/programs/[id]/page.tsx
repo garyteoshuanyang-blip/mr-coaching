@@ -46,7 +46,7 @@ export default function ProgramDetailPage() {
             <p className="font-medium text-sm text-gray-700 mb-2">{day.dayName}</p>
             <div className="space-y-1.5">{day.exercises?.map((ex:any)=><div key={ex.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
               <div><p className="text-sm font-medium">{ex.exercise.name} <span className="text-xs text-gray-400">({ex.exercise.muscleGroup})</span></p>
-              <p className="text-xs text-gray-500">{ex.sets}×{ex.reps}{ex.restSec?` · ${ex.restSec<60?`${ex.restSec}s`:`${ex.restSec/60}m`} rest`:""}{ex.rpe?` · RPE ${ex.rpe}`:""}</p></div>
+              <p className="text-xs text-gray-500">{ex.sets}×{ex.reps}{ex.weight?` @ ${ex.weight}`:""}{ex.restSec?` · ${ex.restSec<60?`${ex.restSec}s`:`${ex.restSec/60}m`} rest`:""}{ex.rpe?` · RPE ${ex.rpe}`:""}</p></div>
             </div>)}</div>
           </div>)}</div>
         </div>)}

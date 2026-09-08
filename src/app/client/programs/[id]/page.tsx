@@ -79,7 +79,7 @@ export default function ClientProgramDetailPage() {
             <div className="bg-gray-50 px-4 py-3 border-b"><p className="font-medium text-sm">{week.name}</p></div>
             <div className="p-4 space-y-3">
               {week.days.map((day: any) => {
-                const allCompleted = day.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed))
+                const allCompleted = day.exercises.length > 0 && day.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed))
                 return (
                   <div key={day.id} className="border rounded-lg p-3">
                     <button onClick={() => setLoggingDay(day.id === loggingDay ? null : day.id)} className="w-full flex items-center justify-between">
@@ -90,7 +90,8 @@ export default function ClientProgramDetailPage() {
                       <div className="mt-3 space-y-4">
                         {day.exercises.map((ex: any) => (
                           <div key={ex.id} className="bg-gray-50 rounded-lg p-3">
-                            <div className="flex items-center justify-between mb-2"><p className="font-medium text-sm">{ex.exercise.name} <span className="text-xs text-gray-400">({ex.sets}×{ex.reps})</span></p><span className="text-xs text-gray-400 capitalize">{ex.exercise.muscleGroup}</span></div>
+                            <div className="flex items-center justify-between mb-2"><p className="font-medium text-sm">{ex.exercise.name} <span className="text-xs text-gray-400">({ex.sets}×{ex.reps})</span>{ex.weight && <span className="text-xs text-blue-500 ml-1">@{ex.weight}</span>}</p><span className="text-xs text-gray-400 capitalize">{ex.exercise.muscleGroup}</span></div>
+                            {(()=>{try{const l=[...(ex.logs||[])].find((l:any)=>l.completed&&l.loggedSets);if(!l)return null;const p=JSON.parse(l.loggedSets).filter((s:any)=>s.weight).map((s:any)=>s.weight);if(!p.length)return null;return <p className="text-xs text-amber-600 mb-2">Last: {p[p.length-1]}kg</p>}catch{return null}})()}
                             <div className="space-y-1.5">{(setsData[ex.id] || []).map((set: any, si: number) => (
                               <div key={si} className="flex items-center gap-2 text-xs">
                                 <span className="w-6 text-gray-500">S{si + 1}</span>
