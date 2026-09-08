@@ -19,6 +19,11 @@ function NewProgramForm() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedEx, setSelectedEx] = useState<Set<string>>(new Set())
   const [duration, setDuration] = useState(1)
+  const [showNewExercise, setShowNewExercise] = useState(false)
+  const [newExName, setNewExName] = useState("")
+  const [newExGroup, setNewExGroup] = useState("Chest")
+  const [newExEquipment, setNewExEquipment] = useState("")
+  const [creatingEx, setCreatingEx] = useState(false)
 
   useEffect(()=>{if (!getUser()) window.location.href = "/admin/login"; authFetch("/api/exercises").then(r=>r.json()).then(d=>setExercises(d.exercises||[]))},[])
 
@@ -90,6 +95,30 @@ function NewProgramForm() {
     setSelectedEx(next)
   }
 
+  const handleCreateExercise = async () => {
+    if (!newExName.trim()) return
+    setCreatingEx(true)
+    const res = await authFetch("/api/exercises", {
+      method: "POST",
+      body: JSON.stringify({ name: newExName.trim(), muscleGroup: newExGroup, equipment: newExEquipment || null, description: null })
+    })
+    if (res.ok) {
+      const data = await res.json()
+      const newEx = data.exercise
+      setExercises(prev => [...prev, newEx].sort((a,b) => a.name.localeCompare(b.name)))
+      const nextSel = new Set(selectedEx)
+      nextSel.add(newEx.id)
+      setSelectedEx(nextSel)
+      setShowNewExercise(false)
+      setNewExName("")
+      setNewExGroup("Chest")
+      setNewExEquipment("")
+    } else {
+      alert("Failed to create exercise")
+    }
+    setCreatingEx(false)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24 md:pb-4">
       <header className="bg-white border-b sticky top-0 z-50 px-4 h-14 flex items-center"><div className="flex items-center gap-3"><Link href={clientId ? `/admin/clients/${clientId}` : "/admin/programs"} className="p-1 hover:bg-gray-100"><ArrowLeft size={20} className="text-gray-500"/></Link><h1 className="font-semibold">New Program{clientId ? " for Client" : ""}</h1></div></header>
@@ -142,7 +171,7 @@ function NewProgramForm() {
                         <button type="button" onClick={()=>removeEx(wi,di,ei)} className="text-red-300 hover:text-red-500"><X size={14}/></button>
                       </div>
                     ))}
-                    <button type="button" onClick={()=>{setPicker({wi,di});setSelectedEx(new Set());setSearchTerm("")}} className="text-sm text-blue-600 hover:text-blue-700"><Plus size={14}/> Add exercise</button>
+                    <button type="button" onClick={()=>{setPicker({wi,di});setSelectedEx(new Set());setSearchTerm("");setShowNewExercise(false)}} className="text-sm text-blue-600 hover:text-blue-700"><Plus size={14}/> Add exercise</button>
                   </div>
                 </div>
               ))}
@@ -158,32 +187,70 @@ function NewProgramForm() {
         <div className="bg-white rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col">
           <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="font-medium text-sm">Select Exercises</h3>
-              {selectedEx.size > 0 && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{selectedEx.size} selected</span>}
+              {showNewExercise ? (
+                <h3 className="font-medium text-sm">New Exercise</h3>
+              ) : (
+                <>
+                  <h3 className="font-medium text-sm">Select Exercises</h3>
+                  {selectedEx.size > 0 && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{selectedEx.size} selected</span>}
+                </>
+              )}
             </div>
-            <button onClick={()=>setPicker(null)} className="text-gray-400"><X size={18}/></button>
+            <div className="flex items-center gap-2">
+              {!showNewExercise && (
+                <button type="button" onClick={() => setShowNewExercise(true)} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-0.5"><Plus size={12}/> New</button>
+              )}
+              <button onClick={()=>setPicker(null)} className="text-gray-400"><X size={18}/></button>
+            </div>
           </div>
           <div className="p-3 flex-1 overflow-auto">
-            <input type="text" placeholder="Search..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mb-3" autoFocus/>
-            <div className="space-y-1">
-              {filtered.length===0?<p className="text-sm text-gray-400 text-center py-4">No exercises. Add one first.</p>
-                :filtered.map(ex=>(
-                  <button key={ex.id} type="button" onClick={()=>toggleSelect(ex.id)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between gap-2 ${
-                      selectedEx.has(ex.id) ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50 border border-transparent"
-                    }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                        selectedEx.has(ex.id) ? "bg-blue-600 border-blue-600" : "border-gray-300"
-                      }`}>
-                        {selectedEx.has(ex.id) && <Check size={12} className="text-white"/>}
-                      </div>
-                      <span className="font-medium">{ex.name}</span>
-                    </div>
-                    <span className="text-xs text-gray-400 capitalize">{ex.muscleGroup}</span>
+            {showNewExercise ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Exercise Name *</label>
+                  <input type="text" value={newExName} onChange={e=>setNewExName(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="e.g. Bulgarian Split Squat" autoFocus/>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Muscle Group *</label>
+                  <select value={newExGroup} onChange={e=>setNewExGroup(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm">
+                    {["Chest","Back","Legs","Shoulders","Arms","Core","Cardio","Full Body"].map(g=><option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Equipment (optional)</label>
+                  <input type="text" value={newExEquipment} onChange={e=>setNewExEquipment(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" placeholder="e.g. Barbell, Dumbbell"/>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="button" onClick={()=>{setShowNewExercise(false);setNewExName("");setNewExGroup("Chest");setNewExEquipment("")}} className="flex-1 px-3 py-2 border rounded-lg text-sm text-gray-600">Back</button>
+                  <button type="button" onClick={handleCreateExercise} disabled={creatingEx||!newExName.trim()} className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm disabled:opacity-50">
+                    {creatingEx ? "Creating..." : "Create & Add"}
                   </button>
-                ))}
-            </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <input type="text" placeholder="Search exercises..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm mb-3" autoFocus/>
+                <div className="space-y-1">
+                  {filtered.length===0?<p className="text-sm text-gray-400 text-center py-4">No exercises. <button type="button" onClick={()=>setShowNewExercise(true)} className="text-blue-600 hover:underline">Add one?</button></p>
+                    :filtered.map(ex=>(
+                      <button key={ex.id} type="button" onClick={()=>toggleSelect(ex.id)}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center justify-between gap-2 ${
+                          selectedEx.has(ex.id) ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50 border border-transparent"
+                        }`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            selectedEx.has(ex.id) ? "bg-blue-600 border-blue-600" : "border-gray-300"
+                          }`}>
+                            {selectedEx.has(ex.id) && <Check size={12} className="text-white"/>}
+                          </div>
+                          <span className="font-medium">{ex.name}</span>
+                        </div>
+                        <span className="text-xs text-gray-400 capitalize">{ex.muscleGroup}</span>
+                      </button>
+                    ))}
+                </div>
+              </>
+            )}
           </div>
           <div className="sticky bottom-0 bg-white border-t px-4 py-3 flex gap-2">
             <button type="button" onClick={()=>setPicker(null)} className="flex-1 px-3 py-2 border rounded-lg text-sm text-gray-600">Cancel</button>
