@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const fourteenDaysAgo = new Date()
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
 
-  const [clientCount, activePrograms, totalExercises, recentClients, activeClientIds, staleClientIds] = await Promise.all([
+  const [clientCount, activePrograms, totalExercises, recentClients, activeClientIds, staleClientIds, programsWithLogs] = await Promise.all([
     db.user.count({ where: { role: "client" } }),
     db.program.count({ where: { status: "active" } }),
     db.exercise.count(),
@@ -49,7 +49,48 @@ export async function GET(req: Request) {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+
+    // Programs with at least one completed workout log
+    // Use the week→day→workoutExercise→workoutLog chain
+    db.workoutLog.findMany({
+      where: {
+        completed: true,
+        workoutExercise: {
+          day: {
+            week: {
+              program: {
+                clientId: { not: null },
+                status: "active",
+              },
+            },
+          },
+        },
+      },
+      select: {
+        workoutExercise: {
+          select: {
+            day: {
+              select: {
+                week: {
+                  select: {
+                    programId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
   ])
+
+  // Deduplicate program IDs that have at least one completed log
+  const programIdsWithLogs = new Set(programsWithLogs.map(l => l.workoutExercise.day.week.programId))
+
+  // Total assigned active programs
+  const totalAssignedPrograms = await db.program.count({
+    where: { clientId: { not: null }, status: "active" },
+  })
 
   return NextResponse.json({
     clientCount,
@@ -63,5 +104,10 @@ export async function GET(req: Request) {
     activeClientCount: activeClientIds.length,
     staleClients: staleClientIds.map(c => c.name),
     staleClientCount: staleClientIds.length,
+    completionPct: totalAssignedPrograms > 0
+      ? Math.round((programIdsWithLogs.size / totalAssignedPrograms) * 100)
+      : 0,
+    programsWithLogs: programIdsWithLogs.size,
+    totalAssignedPrograms,
   })
 }

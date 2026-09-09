@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, TrendingUp } from "lucide-react"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function ClientProgressPage() {
@@ -16,6 +17,13 @@ export default function ClientProgressPage() {
   const sorted = [...weights].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   const latest = sorted[sorted.length - 1]; const first = sorted[0]
   const change = latest && first ? (latest.weight - first.weight).toFixed(1) : null
+  const maxWeight = sorted.length > 0 ? Math.max(...sorted.map(w => w.weight)) : 0
+  const minWeight = sorted.length > 0 ? Math.min(...sorted.map(w => w.weight)) : 0
+
+  const chartData = sorted.map(w => ({
+    date: new Date(w.date).toLocaleDateString("en-SG", { day: "numeric", month: "short" }),
+    weight: w.weight,
+  }))
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -29,10 +37,28 @@ export default function ClientProgressPage() {
               <div><div className="text-lg font-bold text-gray-700">{first?.weight ?? "—"}</div><div className="text-xs text-gray-500">First (kg)</div></div>
               <div><div className={`text-lg font-bold ${Number(change || 0) > 0 ? "text-green-600" : "text-red-500"}`}>{change ? `${Number(change) > 0 ? "+" : ""}${change}` : "—"}</div><div className="text-xs text-gray-500">Change (kg)</div></div>
             </div>
-            <div className="space-y-1">{sorted.slice(-10).map((pt: any, i: number) => {
-              const max = Math.max(...sorted.map((w: any) => w.weight)); const min = Math.min(...sorted.map((w: any) => w.weight)); const range = max - min || 1; const pct = ((pt.weight - min) / range) * 100
+            {sorted.length >= 2 && (
+              <div className="mb-4">
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <YAxis domain={[Math.max(0, minWeight - 5), maxWeight + 5]} tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(value: number) => [`${value} kg`, "Weight"]} />
+                    <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mb-2">All logs:</p>
+            <div className="space-y-1">{sorted.slice(-20).reverse().map((pt: any, i: number) => {
               const date = new Date(pt.date).toLocaleDateString("en-SG", { day: "numeric", month: "short" })
-              return <div key={i} className="flex items-center gap-2 text-xs"><span className="w-16 text-gray-400">{date}</span><div className="flex-1 bg-gray-100 rounded-full h-4"><div className="bg-blue-500 h-full rounded-full" style={{ width: `${pct}%` }}/></div><span className="w-12 text-right font-medium">{pt.weight}</span></div>
+              return (
+                <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-gray-50 last:border-0">
+                  <span className="text-gray-400">{date}</span>
+                  <span className="font-medium">{pt.weight} kg</span>
+                </div>
+              )
             })}</div>
           </>}
         </div>

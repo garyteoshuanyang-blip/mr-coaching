@@ -47,6 +47,16 @@ function NewProgramForm() {
     setWeeks(newWeeks)
   }
 
+  const fillFromWeek1 = () => {
+    if (weeks.length < 2 || !weeks[0].days.length) return
+    const w1 = JSON.parse(JSON.stringify(weeks[0]))
+    const newWeeks = weeks.map((week, i) => {
+      if (i === 0) return week
+      return { ...week, days: JSON.parse(JSON.stringify(w1.days)) }
+    })
+    setWeeks(newWeeks)
+  }
+
   const addDay = (wi:number) => { const w=[...weeks]; const o=w[wi].days.length+1; w[wi].days.push({dayName:`Day ${o}`, dayOrder:o, exercises:[]}); setWeeks(w) }
   const removeDay = (wi:number, di:number) => { const w=[...weeks]; w[wi].days=w[wi].days.filter((_,i)=>i!==di).map((d,i)=>({...d,dayOrder:i+1})); setWeeks(w) }
 
@@ -180,7 +190,12 @@ function NewProgramForm() {
             </div>
           </div>
         ))}
-        <button type="button" onClick={addWeek} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-gray-400">+ Add Week</button>
+        <div className="flex gap-2">
+            <button type="button" onClick={addWeek} className="flex-1 py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-gray-400">+ Add Week</button>
+            <button type="button" onClick={fillFromWeek1} className="flex-1 py-3 border-2 border-dashed border-blue-300 text-blue-600 rounded-xl text-sm hover:border-blue-400 hover:bg-blue-50">
+              ↻ Fill Weeks from Week 1
+            </button>
+          </div>
         <button type="submit" disabled={saving||!name} className="w-full bg-purple-600 text-white py-3 rounded-xl font-medium disabled:opacity-50"><Save size={18}/> {saving?"Creating...":"Create Program"}</button>
       </form>
 

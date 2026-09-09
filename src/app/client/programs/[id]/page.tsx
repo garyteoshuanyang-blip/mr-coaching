@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, CheckCircle, Dumbbell } from "lucide-react"
+import { ArrowLeft, CheckCircle, Clock, Dumbbell } from "lucide-react"
 import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function ClientProgramDetailPage() {
@@ -12,6 +12,7 @@ export default function ClientProgramDetailPage() {
   const [loggingDay, setLoggingDay] = useState<string | null>(null)
   const [setsData, setSetsData] = useState<Record<string, any[]>>({})
   const [saving, setSaving] = useState(false)
+  const [showPast, setShowPast] = useState(false)
 
   useEffect(() => {
     if (!getUser()) window.location.href = "/client/access"
@@ -45,7 +46,20 @@ export default function ClientProgramDetailPage() {
     const newSets: Record<string, any[]> = { ...setsData }
     day.exercises.forEach((ex: any) => {
       if (!newSets[ex.id]) {
-        newSets[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({ set: i + 1, reps: parseInt(ex.reps) || 10, weight: 0 }))
+        // Try loading any log (not just completed — partial saves count)
+        const latestLog = ex.logs?.slice().reverse().find((l: any) => l.loggedSets)
+        if (latestLog?.loggedSets) {
+          try { newSets[ex.id] = JSON.parse(latestLog.loggedSets) } catch {}
+        }
+      }
+      if (!newSets[ex.id]) {
+        // Fall back to prescribed weight if set, otherwise start at 0
+        const prescribedWeight = parseFloat(ex.weight) || 0
+        newSets[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({
+          set: i + 1,
+          reps: parseInt(ex.reps) || 10,
+          weight: prescribedWeight,
+        }))
       }
     })
     setSetsData(newSets)
@@ -70,11 +84,80 @@ export default function ClientProgramDetailPage() {
   if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Loading...</p></div>
   if (!program) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Not found</p></div>
 
+  const totalWeeks = program.weeks?.length || 0
+  const completedDays = program.weeks?.flatMap(w => w.days)?.filter(d => d.exercises?.length > 0 && d.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed)))?.length || 0
+  const totalDays = program.weeks?.flatMap(w => w.days)?.filter(d => d.exercises?.length > 0)?.length || 0
+  const progressPct = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <header className="bg-white border-b sticky top-0 z-50 px-4 h-14 flex items-center"><div className="flex items-center gap-3"><Link href="/client/programs" className="p-1 hover:bg-gray-100"><ArrowLeft size={20} className="text-gray-500"/></Link><h1 className="font-semibold">{program.name}</h1></div></header>
       <div className="p-4 max-w-2xl mx-auto space-y-4">
-        {program.weeks.map((week: any) => (
+        {/* Progress bar */}
+        <div className="bg-white rounded-xl border p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-gray-600">{completedDays} of {totalDays} days done</span>
+            <span className="text-xs text-gray-400">{progressPct}% · {totalWeeks} weeks</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-2">
+            <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex bg-white rounded-xl border overflow-hidden">
+          <button onClick={() => setShowPast(false)}
+            className={`flex-1 py-2.5 text-sm font-medium text-center ${!showPast ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-50"}`}>Schedule</button>
+          <button onClick={() => setShowPast(true)}
+            className={`flex-1 py-2.5 text-sm font-medium text-center ${showPast ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-50"}}`}>Past Workouts</button>
+        </div>
+
+        {showPast ? (
+          <div className="space-y-2">
+            {program.weeks.flatMap(w => w.days).filter(d => d.exercises?.some((ex: any) => ex.logs?.some((l: any) => l.completed))).length === 0 ? (
+              <div className="text-center py-8 bg-white rounded-xl border"><p className="text-sm text-gray-400">No completed workouts yet.</p></div>
+            ) : program.weeks.map(week => {
+              const completedDays = week.days.filter(d => d.exercises?.some((ex: any) => ex.logs?.some((l: any) => l.completed)))
+              if (completedDays.length === 0) return null
+              return (
+                <div key={week.id} className="bg-white rounded-xl border overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-3 border-b"><p className="font-medium text-sm">{week.name}</p></div>
+                  <div className="p-4 space-y-3">
+                    {completedDays.map(day => {
+                      const logsByDate = new Map<string, any[]>()
+                      day.exercises.forEach(ex => {
+                        const logs = ex.logs?.filter((l: any) => l.completed && l.loggedSets) || []
+                        logs.forEach(l => {
+                          const dateKey = new Date(l.date).toLocaleDateString("en-SG", { day: "numeric", month: "short" })
+                          if (!logsByDate.has(dateKey)) logsByDate.set(dateKey, [])
+                          logsByDate.get(dateKey)!.push({ exercise: ex, log: l })
+                        })
+                      })
+                      return Array.from(logsByDate.entries()).map(([dateKey, entries]) => (
+                        <div key={`${day.id}-${dateKey}`} className="border rounded-lg p-3">
+                          <div className="flex items-center gap-1.5 mb-2"><Clock size={14} className="text-gray-400"/><p className="text-xs text-gray-500 font-medium">{day.dayName} · {dateKey}</p></div>
+                          {entries.map(({ exercise, log }, ei) => {
+                            const parsed = (() => { try { return JSON.parse(log.loggedSets) } catch { return null } })()
+                            if (!parsed) return null
+                            const avgWeight = parsed.filter((s: any) => s.weight).reduce((a: number, s: any) => a + s.weight, 0) / (parsed.filter((s: any) => s.weight).length || 1)
+                            return (
+                              <div key={ei} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 mb-1 last:mb-0">
+                                <p className="text-sm">{exercise.exercise.name} <span className="text-xs text-gray-400">({exercise.sets}×{exercise.reps})</span></p>
+                                <span className="text-xs font-medium text-blue-600">{avgWeight > 0 ? `${Math.round(avgWeight)}kg` : ""}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ))
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          /* Schedule view */
+          program.weeks.map((week: any) => (
           <div key={week.id} className="bg-white rounded-xl border overflow-hidden">
             <div className="bg-gray-50 px-4 py-3 border-b"><p className="font-medium text-sm">{week.name}</p></div>
             <div className="p-4 space-y-3">
@@ -115,7 +198,7 @@ export default function ClientProgramDetailPage() {
               })}
             </div>
           </div>
-        ))}
+        )))}
       </div>
     </div>
   )

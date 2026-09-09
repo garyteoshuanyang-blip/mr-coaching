@@ -30,7 +30,24 @@ export default function ProgramDetailPage() {
         </div>
       </header>
       <div className="p-4 max-w-4xl mx-auto space-y-4">
-        {editMode?<div className="bg-white rounded-xl border p-4 space-y-3">
+        {/* Progress bar */}
+        {(() => {
+          const totalDays = program.weeks?.flatMap(w => w.days)?.filter(d => d.exercises?.length > 0)?.length || 0
+          const completedDays = program.weeks?.flatMap(w => w.days)?.filter(d => d.exercises?.length > 0 && d.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed)))?.length || 0
+          const pct = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0
+          if (totalDays === 0) return null
+          return (
+            <div className="bg-white rounded-xl border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-600">{completedDays}/{totalDays} days completed</span>
+                <span className={`text-xs font-medium ${pct >= 100 ? "text-green-600" : "text-blue-600"}`}>{pct}%</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2.5">
+                <div className={`h-2.5 rounded-full transition-all ${pct >= 100 ? "bg-green-500" : "bg-blue-500"}`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          )
+        })()}
           <input type="text" value={name} onChange={e=>setName(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm"/>
           <textarea value={description} onChange={e=>setDescription(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-lg text-sm"/>
           <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm"><option value="active">Active</option><option value="completed">Completed</option></select>

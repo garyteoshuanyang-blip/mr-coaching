@@ -33,7 +33,17 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-xl border p-4"><div className="text-2xl font-bold text-blue-600">{data?.clientCount ?? "—"}</div><div className="text-sm text-gray-500">Clients</div></div>
           <div className="bg-white rounded-xl border p-4"><div className="text-2xl font-bold text-green-600">{data?.activePrograms ?? "—"}</div><div className="text-sm text-gray-500">Active Programs</div></div>
           <div className="bg-white rounded-xl border p-4"><div className="text-2xl font-bold text-purple-600">{data?.totalExercises ?? "—"}</div><div className="text-sm text-gray-500">Exercises</div></div>
-          <div className="bg-white rounded-xl border p-4"><div className="text-2xl font-bold text-teal-600">{data?.activeClientCount ?? "—"}</div><div className="text-sm text-gray-500">Logged This Week</div></div>
+          <div className="bg-white rounded-xl border p-4">
+            <div className="text-2xl font-bold text-teal-600">
+              {data?.totalAssignedPrograms > 0 ? `${data.completionPct}%` : "—"}
+            </div>
+            <div className="text-sm text-gray-500">
+              Completion
+              {data?.totalAssignedPrograms > 0 && (
+                <span className="text-xs text-gray-400 ml-1">({data.programsWithLogs}/{data.totalAssignedPrograms})</span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Progress widget */}
