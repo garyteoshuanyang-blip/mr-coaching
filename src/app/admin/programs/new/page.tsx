@@ -85,7 +85,12 @@ function NewProgramForm() {
 
   const handleSubmit=async(e:React.FormEvent)=>{
     e.preventDefault();setSaving(true)
-    const res=await authFetch("/api/programs",{method:"POST",body:JSON.stringify({name,description:description||null,weeks})})
+    // Auto-fill Week 1 exercises into all other weeks
+    const fillFromWeek1 = weeks.length > 1 && weeks[0].days.some(d => d.exercises.length > 0)
+    const wkData = fillFromWeek1
+      ? weeks.map((w, i) => i === 0 ? w : { ...w, days: JSON.parse(JSON.stringify(weeks[0].days)) })
+      : weeks
+    const res=await authFetch("/api/programs",{method:"POST",body:JSON.stringify({name,description:description||null,weeks:wkData})})
     if(!res.ok){alert("Failed");setSaving(false);return}
     const d=await res.json()
     const programId=d.program.id

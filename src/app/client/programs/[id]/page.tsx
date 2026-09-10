@@ -162,40 +162,59 @@ export default function ClientProgramDetailPage() {
             <div className="bg-gray-50 px-4 py-3 border-b"><p className="font-medium text-sm">{week.name}</p></div>
             <div className="p-4 space-y-3">
               {week.days.map((day: any) => {
-                const allCompleted = day.exercises.length > 0 && day.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed))
-                return (
-                  <div key={day.id} className="border rounded-lg p-3">
-                    <button onClick={() => setLoggingDay(day.id === loggingDay ? null : day.id)} className="w-full flex items-center justify-between">
-                      <p className="font-medium text-sm text-gray-700 flex items-center gap-2">{day.dayName}{allCompleted && <CheckCircle size={14} className="text-green-500"/>}</p>
-                      <span className="text-xs text-green-600">{allCompleted ? "Completed" : "Log →"}</span>
-                    </button>
-                    {loggingDay === day.id && (
-                      <div className="mt-3 space-y-4">
-                        {day.exercises.map((ex: any) => (
-                          <div key={ex.id} className="bg-gray-50 rounded-lg p-3">
-                            <div className="flex items-center justify-between mb-2"><p className="font-medium text-sm">{ex.exercise.name} <span className="text-xs text-gray-400">({ex.sets}×{ex.reps})</span>{ex.weight && <span className="text-xs text-blue-500 ml-1">@{ex.weight}</span>}</p><span className="text-xs text-gray-400 capitalize">{ex.exercise.muscleGroup}</span></div>
-                            {(()=>{try{const l=[...(ex.logs||[])].find((l:any)=>l.completed&&l.loggedSets);if(!l)return null;const p=JSON.parse(l.loggedSets).filter((s:any)=>s.weight).map((s:any)=>s.weight);if(!p.length)return null;return <p className="text-xs text-amber-600 mb-2">Last: {p[p.length-1]}kg</p>}catch{return null}})()}
-                            <div className="space-y-1.5">{(setsData[ex.id] || []).map((set: any, si: number) => (
-                              <div key={si} className="flex items-center gap-2 text-xs">
-                                <span className="w-6 text-gray-500">S{si + 1}</span>
-                                <div className="flex-1 flex items-center gap-1">
-                                  <input type="number" value={set.reps || ""} onChange={e => updateSet(ex.id, si, "reps", parseInt(e.target.value) || 0)} className="w-12 px-1 py-1 border rounded text-center" placeholder="Reps" min={0} />
-                                  <span className="text-gray-400">×</span>
-                                  <input type="number" value={set.weight || ""} onChange={e => updateSet(ex.id, si, "weight", parseFloat(e.target.value) || 0)} className="w-16 px-1 py-1 border rounded text-center" placeholder="kg" min={0} step={0.5} />
-                                  <span className="text-gray-400">kg</span>
-                                </div>
-                                <input type="number" value={set.rpe || ""} onChange={e => updateSet(ex.id, si, "rpe", parseInt(e.target.value) || undefined)} className="w-10 px-1 py-1 border rounded text-center" placeholder="RPE" min={1} max={10} />
+                            const allCompleted = day.exercises.length > 0 && day.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed))
+                            return (
+                              <div key={day.id} className={`border rounded-lg p-3 ${loggingDay === day.id ? 'border-blue-300 bg-blue-50/30' : ''}`}>
+                                <button onClick={() => { const nid = day.id === loggingDay ? null : day.id; setLoggingDay(nid); if (nid) selectDay(nid); }} className="w-full flex items-center justify-between">
+                                  <p className={`font-medium text-sm ${allCompleted ? 'text-green-700' : 'text-gray-700'} flex items-center gap-2`}>{day.dayName}{allCompleted && <CheckCircle size={14} className="text-green-500"/>}</p>
+                                  <span className={`text-xs font-medium ${allCompleted ? 'text-green-600' : 'text-blue-600'}`}>{allCompleted ? "✓ Completed" : "Log →"}</span>
+                                </button>
+
+                                {/* Inline exercise preview (when not expanded) */}
+                                {loggingDay !== day.id && day.exercises.length > 0 && !allCompleted && (
+                                  <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
+                                    {day.exercises.map((ex: any) => (
+                                      <div key={ex.id} className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-600 truncate">{ex.exercise.name} <span className="text-gray-400">({ex.sets}×{ex.reps})</span></span>
+                                        <div className="flex items-center gap-1 min-w-0">
+                                          {ex.weight && <span className="text-blue-500 font-medium whitespace-nowrap">@{ex.weight}</span>}
+                                          <Dumbbell size={12} className="text-gray-300 shrink-0"/>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {loggingDay === day.id && (
+                                  <div className="mt-3 space-y-4">
+                                    {day.exercises.map((ex: any) => (
+                                      <div key={ex.id} className="bg-white rounded-lg p-3 border">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <p className="font-medium text-sm">{ex.exercise.name} <span className="text-xs text-gray-400">({ex.sets}×{ex.reps})</span></p>
+                                          <span className="text-xs text-gray-400 capitalize">{ex.exercise.muscleGroup}</span>
+                                        </div>
+                                        {(()=>{try{const l=[...(ex.logs||[])].find((l:any)=>l.completed&&l.loggedSets);if(!l)return null;const p=JSON.parse(l.loggedSets).filter((s:any)=>s.weight).map((s:any)=>s.weight);if(!p.length)return null;return <p className="text-xs text-amber-600 mb-2">Last: {p[p.length-1]}kg</p>}catch{return null}})()}
+                                        <div className="space-y-1.5">{(setsData[ex.id] || []).map((set: any, si: number) => (
+                                          <div key={si} className="flex items-center gap-2 text-xs bg-gray-50 rounded px-2 py-1.5">
+                                            <span className="w-5 text-gray-400 font-medium">S{si + 1}</span>
+                                            <div className="flex-1 flex items-center gap-1">
+                                              <input type="number" value={set.reps || ""} onChange={e => updateSet(ex.id, si, "reps", parseInt(e.target.value) || 0)} className="w-12 px-1 py-1 border rounded text-center text-xs" placeholder="Reps" min={0} />
+                                              <span className="text-gray-400">×</span>
+                                              <input type="number" value={set.weight || ""} onChange={e => updateSet(ex.id, si, "weight", parseFloat(e.target.value) || 0)} className="w-16 px-1 py-1 border rounded text-center text-xs font-medium" placeholder="kg" min={0} step={0.5} />
+                                              <span className="text-gray-400 text-xs">kg</span>
+                                            </div>
+                                            <input type="number" value={set.rpe || ""} onChange={e => updateSet(ex.id, si, "rpe", parseInt(e.target.value) || undefined)} className="w-10 px-1 py-1 border rounded text-center text-xs" placeholder="RPE" min={1} max={10} />
+                                          </div>
+                                        ))}</div>
+                                      </div>
+                                    ))}
+                                    <button onClick={completeWorkout} disabled={saving} className="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50">{saving ? "Saving..." : "✓ Complete Workout"}</button>
+                                    <button onClick={() => setLoggingDay(null)} className="w-full text-sm text-gray-400 py-1.5 hover:text-gray-600">Close</button>
+                                  </div>
+                                )}
                               </div>
-                            ))}</div>
-                          </div>
-                        ))}
-                        <button onClick={completeWorkout} disabled={saving} className="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">{saving ? "Saving..." : "Complete Workout"}</button>
-                        <button onClick={() => setLoggingDay(null)} className="w-full text-sm text-gray-400 py-1">Close</button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+                            )
+                          })}
             </div>
           </div>
         )))}
