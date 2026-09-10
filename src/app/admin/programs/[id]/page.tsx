@@ -32,8 +32,8 @@ export default function ProgramDetailPage() {
       <div className="p-4 max-w-4xl mx-auto space-y-4">
         {/* Progress bar */}
         {(() => {
-          const totalDays = program.weeks?.flatMap(w => w.days)?.filter(d => d.exercises?.length > 0)?.length || 0
-          const completedDays = program.weeks?.flatMap(w => w.days)?.filter(d => d.exercises?.length > 0 && d.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed)))?.length || 0
+          const totalDays = program.weeks?.flatMap((w: any) => w.days)?.filter((d: any) => d.exercises?.length > 0)?.length || 0
+          const completedDays = program.weeks?.flatMap((w: any) => w.days)?.filter((d: any) => d.exercises?.length > 0 && d.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed)))?.length || 0
           const pct = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0
           if (totalDays === 0) return null
           return (
@@ -48,11 +48,12 @@ export default function ProgramDetailPage() {
             </div>
           )
         })()}
+        {editMode ? (<div className="bg-white rounded-xl border p-4">
           <input type="text" value={name} onChange={e=>setName(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm"/>
           <textarea value={description} onChange={e=>setDescription(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-lg text-sm"/>
           <select value={status} onChange={e=>setStatus(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm"><option value="active">Active</option><option value="completed">Completed</option></select>
           <div className="flex gap-2"><button onClick={handleSave} className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm">Save</button><button onClick={()=>setEditMode(false)} className="text-gray-500 px-4 py-1.5 text-sm">Cancel</button></div>
-        </div>:<div className="bg-white rounded-xl border p-4">
+        </div>):<div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-2 mb-1"><span className={`text-xs px-2 py-0.5 rounded-full ${program.status==="active"?"bg-green-100 text-green-700":"bg-gray-100 text-gray-500"}`}>{program.status}</span>{program.client&&<span className="text-xs text-gray-400">Assigned to {program.client.name}</span>}{!program.client&&<span className="text-xs text-gray-400">Template</span>}</div>
           {program.description&&<p className="text-sm text-gray-600 mt-2">{program.description}</p>}
           <p className="text-xs text-gray-400 mt-2">{program.weeks?.length} weeks</p>

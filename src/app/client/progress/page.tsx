@@ -44,7 +44,7 @@ export default function ClientProgressPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
                     <YAxis domain={[Math.max(0, minWeight - 5), maxWeight + 5]} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(value: number) => [`${value} kg`, "Weight"]} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(value: any) => [`${value} kg`, "Weight"]} />
                     <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>

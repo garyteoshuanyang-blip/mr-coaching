@@ -85,8 +85,8 @@ export default function ClientProgramDetailPage() {
   if (!program) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Not found</p></div>
 
   const totalWeeks = program.weeks?.length || 0
-  const completedDays = program.weeks?.flatMap(w => w.days)?.filter(d => d.exercises?.length > 0 && d.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed)))?.length || 0
-  const totalDays = program.weeks?.flatMap(w => w.days)?.filter(d => d.exercises?.length > 0)?.length || 0
+  const completedDays = program.weeks?.flatMap((w: any) => w.days)?.filter((d: any) => d.exercises?.length > 0 && d.exercises.every((ex: any) => ex.logs?.some((l: any) => l.completed)))?.length || 0
+  const totalDays = program.weeks?.flatMap((w: any) => w.days)?.filter((d: any) => d.exercises?.length > 0)?.length || 0
   const progressPct = totalDays > 0 ? Math.round((completedDays / totalDays) * 100) : 0
 
   return (
@@ -114,20 +114,20 @@ export default function ClientProgramDetailPage() {
 
         {showPast ? (
           <div className="space-y-2">
-            {program.weeks.flatMap(w => w.days).filter(d => d.exercises?.some((ex: any) => ex.logs?.some((l: any) => l.completed))).length === 0 ? (
+            {program.weeks.flatMap((w: any) => w.days).filter((d: any) => d.exercises?.some((ex: any) => ex.logs?.some((l: any) => l.completed))).length === 0 ? (
               <div className="text-center py-8 bg-white rounded-xl border"><p className="text-sm text-gray-400">No completed workouts yet.</p></div>
-            ) : program.weeks.map(week => {
-              const completedDays = week.days.filter(d => d.exercises?.some((ex: any) => ex.logs?.some((l: any) => l.completed)))
+            ) : program.weeks.map((week: any) => {
+              const completedDays = week.days.filter((d: any) => d.exercises?.some((ex: any) => ex.logs?.some((l: any) => l.completed)))
               if (completedDays.length === 0) return null
               return (
                 <div key={week.id} className="bg-white rounded-xl border overflow-hidden">
                   <div className="bg-gray-50 px-4 py-3 border-b"><p className="font-medium text-sm">{week.name}</p></div>
                   <div className="p-4 space-y-3">
-                    {completedDays.map(day => {
+                    {completedDays.map((day: any) => {
                       const logsByDate = new Map<string, any[]>()
-                      day.exercises.forEach(ex => {
+                      day.exercises.forEach((ex: any) => {
                         const logs = ex.logs?.filter((l: any) => l.completed && l.loggedSets) || []
-                        logs.forEach(l => {
+                        logs.forEach((l: any) => {
                           const dateKey = new Date(l.date).toLocaleDateString("en-SG", { day: "numeric", month: "short" })
                           if (!logsByDate.has(dateKey)) logsByDate.set(dateKey, [])
                           logsByDate.get(dateKey)!.push({ exercise: ex, log: l })
