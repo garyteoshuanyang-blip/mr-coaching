@@ -38,22 +38,48 @@ export default function ClientProgramDetailPage() {
     })
   }, [params.id])
 
-  const selectDay = (dayId: string) => {
+  const selectDay = async (dayId: string) => {
     setLoggingDay(dayId)
     if (!program) return
     const day = program.weeks.flatMap((w: any) => w.days).find((d: any) => d.id === dayId)
     if (!day) return
     const newSets: Record<string, any[]> = { ...setsData }
-    day.exercises.forEach((ex: any) => {
+
+    // Fetch all logs across the entire program to find weights from any week
+    let globalLogs: any[] = []
+    try {
+      const res = await authFetch(`/api/workout-logs?programId=${program.id}`)
+      if (res.ok) globalLogs = (await res.json()).logs || []
+    } catch {}
+
+    for (const ex of day.exercises) {
       if (!newSets[ex.id]) {
-        // Try loading any log (not just completed — partial saves count)
-        const latestLog = ex.logs?.slice().reverse().find((l: any) => l.loggedSets)
-        if (latestLog?.loggedSets) {
-          try { newSets[ex.id] = JSON.parse(latestLog.loggedSets) } catch {}
+        // 1) Try local logs (same day, any log with sets)
+        const localLog = ex.logs?.slice().reverse().find((l: any) => l.loggedSets)
+        if (localLog?.loggedSets) {
+          try { newSets[ex.id] = JSON.parse(localLog.loggedSets) } catch {}
         }
       }
       if (!newSets[ex.id]) {
-        // Fall back to prescribed weight if set, otherwise start at 0
+        // 2) Try global logs (any week, same exercise)
+        const globalLog = globalLogs
+          .filter((l: any) => l.workoutExercise.exerciseId === ex.exercise.id && l.loggedSets)
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+        if (globalLog?.loggedSets) {
+          try {
+            const parsed = JSON.parse(globalLog.loggedSets)
+            // Only use the weights, keep reps from the prescription
+            const weights = parsed.map((s: any) => s.weight || 0)
+            newSets[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({
+              set: i + 1,
+              reps: parseInt(ex.reps) || 10,
+              weight: weights[i] || weights[weights.length - 1] || 0,
+            }))
+          } catch {}
+        }
+      }
+      if (!newSets[ex.id]) {
+        // 3) Fall back to prescribed weight
         const prescribedWeight = parseFloat(ex.weight) || 0
         newSets[ex.id] = Array.from({ length: ex.sets }, (_, i) => ({
           set: i + 1,
@@ -61,7 +87,7 @@ export default function ClientProgramDetailPage() {
           weight: prescribedWeight,
         }))
       }
-    })
+    }
     setSetsData(newSets)
   }
 
