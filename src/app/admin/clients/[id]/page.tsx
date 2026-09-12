@@ -52,7 +52,10 @@ export default function ClientDetailPage() {
       <div>
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-sm">Programs</h2>
-          <Link href={`/admin/programs/new?clientId=${params.id}`} className="text-sm text-purple-600 hover:underline flex items-center gap-1"><FileText size={14}/>New Program</Link>
+          <div className="flex items-center gap-2">
+            <Link href={`/admin/programs/assign?clientId=${params.id}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1"><Plus size={14}/>Add Template</Link>
+            <Link href={`/admin/programs/new?clientId=${params.id}`} className="text-sm text-purple-600 hover:underline flex items-center gap-1"><FileText size={14}/>New Program</Link>
+          </div>
         </div>
         {data.assignedPrograms?.length > 0 ? (
           <div className="space-y-2">
