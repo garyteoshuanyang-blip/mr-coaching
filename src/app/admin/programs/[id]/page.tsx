@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Trash2, Edit3, Users, CheckCircle, XCircle } from "lucide-react"
+import { ArrowLeft, Trash2, Edit3, Users, CheckCircle, XCircle, Copy } from "lucide-react"
 import { getUser, authFetch } from "@/lib/client-auth"
 
 export default function ProgramDetailPage() {
@@ -15,6 +15,7 @@ export default function ProgramDetailPage() {
 
   const handleSave=async()=>{const res=await authFetch(`/api/programs/${params.id}`,{method:"PUT",body:JSON.stringify({name,description,status})});if(res.ok){setEditMode(false);setProgram((p:any)=>({...p,name,description,status}))}else alert("Failed")}
   const handleDelete=async()=>{if(!confirm("Delete?"))return;await authFetch(`/api/programs/${params.id}`,{method:"DELETE"});router.push("/admin/programs")}
+  const handleClone=async()=>{const res=await authFetch(`/api/programs/${params.id}/clone`,{method:"POST"});if(res.ok){const d=await res.json();router.push(`/admin/programs/${d.id}`)}else alert("Clone failed")}
 
   if(loading)return<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Loading...</p></div>
   if(!program)return<div className="min-h-screen bg-gray-50 flex items-center justify-center"><p className="text-gray-400">Not found</p></div>
@@ -25,6 +26,7 @@ export default function ProgramDetailPage() {
         <div className="flex items-center gap-3"><Link href="/admin/programs" className="p-1 hover:bg-gray-100"><ArrowLeft size={20} className="text-gray-500"/></Link><h1 className="font-semibold">{program.name}</h1></div>
         <div className="flex items-center gap-2">
           {!program.clientId&&<Link href={`/admin/programs/assign?programId=${params.id}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1"><Users size={14}/>Assign</Link>}
+          <button onClick={handleClone} className="text-sm text-purple-600 hover:underline flex items-center gap-1"><Copy size={14}/>Clone</button>
           <button onClick={()=>setEditMode(!editMode)} className="p-2 text-gray-400"><Edit3 size={18}/></button>
           <button onClick={handleDelete} className="p-2 text-red-400"><Trash2 size={18}/></button>
         </div>
