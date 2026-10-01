@@ -17,7 +17,7 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  assignedPrograms Program[]        @relation("ProgramClient")
+  assignedPrograms Program[]       @relation("ProgramClient")
   workoutLogs      WorkoutLog[]
   bodyWeightLogs   BodyWeightLog[]
 
@@ -62,7 +62,7 @@ model Program {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  client User? @relation("ProgramClient", fields: [clientId], references: [id], onDelete: SetNull)
+  client User?  @relation("ProgramClient", fields: [clientId], references: [id], onDelete: SetNull)
   weeks  Week[]
 
   @@index([clientId])
@@ -70,12 +70,12 @@ model Program {
 }
 
 model Week {
-  id         String @id @default(cuid())
+  id         String  @id @default(cuid())
   programId  String
   weekNumber Int
   name       String?
 
-  program Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program Program      @relation(fields: [programId], references: [id], onDelete: Cascade)
   days    WorkoutDay[]
 
   @@unique([programId, weekNumber])
@@ -90,15 +90,33 @@ model WorkoutDay {
 
   week      Week              @relation(fields: [weekId], references: [id], onDelete: Cascade)
   exercises WorkoutExercise[]
+  groups    WorkoutGroup[]
 
   @@unique([weekId, dayOrder])
   @@map("workout_days")
+}
+
+/// A superset/circuit grouping of exercises within a single day.
+/// Exercises with a null groupId are standalone and behave exactly as before.
+model WorkoutGroup {
+  id           String   @id @default(cuid())
+  dayId        String
+  label        String // "A", "B", "C" — derived from sortOrder, stored for convenience
+  sortOrder    Int
+  restAfterSec Int? // rest after completing one full round of the group
+  createdAt    DateTime @default(now())
+
+  day       WorkoutDay        @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  exercises WorkoutExercise[]
+
+  @@map("workout_groups")
 }
 
 model WorkoutExercise {
   id         String  @id @default(cuid())
   dayId      String
   exerciseId String
+  groupId    String?
   sortOrder  Int
   sets       Int
   reps       String
@@ -109,6 +127,7 @@ model WorkoutExercise {
 
   day      WorkoutDay    @relation(fields: [dayId], references: [id], onDelete: Cascade)
   exercise Exercise      @relation(fields: [exerciseId], references: [id])
+  group    WorkoutGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   logs     WorkoutLog[]
 
   @@unique([dayId, exerciseId])

@@ -10,7 +10,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     where: { id, role: "client" },
     include: {
       assignedPrograms: {
-        include: { weeks: { orderBy: { weekNumber: "asc" }, include: { days: { orderBy: { dayOrder: "asc" }, include: { exercises: { include: { exercise: true }, orderBy: { sortOrder: "asc" } } } } } } },
+        include: { weeks: { orderBy: { weekNumber: "asc" }, include: { days: { orderBy: { dayOrder: "asc" }, include: { groups: { orderBy: { sortOrder: "asc" } }, exercises: { include: { exercise: true }, orderBy: { sortOrder: "asc" } } } } } } },
         orderBy: { createdAt: "desc" },
       },
       bodyWeightLogs: { orderBy: { date: "desc" }, take: 30 },

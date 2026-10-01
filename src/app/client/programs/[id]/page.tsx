@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, CheckCircle, Clock, Dumbbell } from "lucide-react"
 import { getUser, authFetch } from "@/lib/client-auth"
+import { buildDayBlocks, fmtRest } from "@/lib/day-blocks"
 
 export default function ClientProgramDetailPage() {
   const params = useParams()
@@ -199,13 +200,29 @@ export default function ClientProgramDetailPage() {
                                 {/* Inline exercise preview (when not expanded) */}
                                 {loggingDay !== day.id && day.exercises.length > 0 && !allCompleted && (
                                   <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
-                                    {day.exercises.map((ex: any) => (
-                                      <div key={ex.id} className="flex items-center justify-between text-xs">
-                                        <span className="text-gray-600 truncate">{ex.exercise.name} <span className="text-gray-400">({ex.sets}×{ex.reps})</span></span>
+                                    {buildDayBlocks(day).map((b: any, bi: number) => b.kind === "single" ? (
+                                      <div key={b.ex.id} className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-600 truncate">{b.ex.exercise.name} <span className="text-gray-400">({b.ex.sets}×{b.ex.reps})</span></span>
                                         <div className="flex items-center gap-1 min-w-0">
-                                          {ex.weight && <span className="text-blue-500 font-medium whitespace-nowrap">@{ex.weight}</span>}
+                                          {b.ex.weight && <span className="text-blue-500 font-medium whitespace-nowrap">@{b.ex.weight}</span>}
                                           <Dumbbell size={12} className="text-gray-300 shrink-0"/>
                                         </div>
+                                      </div>
+                                    ) : (
+                                      <div key={`g${bi}`} className="rounded-lg border border-purple-200 bg-purple-50/50 p-2 space-y-1">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] font-semibold text-purple-700">SUPERSET {b.label}</span>
+                                          {b.restAfterSec ? <span className="text-[10px] text-gray-400">rest {fmtRest(b.restAfterSec)} after round</span> : null}
+                                        </div>
+                                        {b.members.map((ex: any, mi: number) => (
+                                          <div key={ex.id} className="flex items-center justify-between text-xs">
+                                            <span className="text-gray-600 truncate"><span className="text-purple-600 font-medium mr-1">{b.label}{mi + 1}</span>{ex.exercise.name} <span className="text-gray-400">({ex.sets}×{ex.reps})</span></span>
+                                            <div className="flex items-center gap-1 min-w-0">
+                                              {ex.weight && <span className="text-blue-500 font-medium whitespace-nowrap">@{ex.weight}</span>}
+                                              <Dumbbell size={12} className="text-gray-300 shrink-0"/>
+                                            </div>
+                                          </div>
+                                        ))}
                                       </div>
                                     ))}
                                   </div>
@@ -213,25 +230,60 @@ export default function ClientProgramDetailPage() {
 
                                 {loggingDay === day.id && (
                                   <div className="mt-3 space-y-4">
-                                    {day.exercises.map((ex: any) => (
-                                      <div key={ex.id} className="bg-white rounded-lg p-3 border">
+                                    {buildDayBlocks(day).map((b: any, bi: number) => b.kind === "single" ? (
+                                      <div key={b.ex.id} className="bg-white rounded-lg p-3 border">
                                         <div className="flex items-center justify-between mb-2">
-                                          <p className="font-medium text-sm">{ex.exercise.name} <span className="text-xs text-gray-400">({ex.sets}×{ex.reps})</span></p>
-                                          <span className="text-xs text-gray-400 capitalize">{ex.exercise.muscleGroup}</span>
+                                          <p className="font-medium text-sm">{b.ex.exercise.name} <span className="text-xs text-gray-400">({b.ex.sets}×{b.ex.reps})</span></p>
+                                          <span className="text-xs text-gray-400 capitalize">{b.ex.exercise.muscleGroup}</span>
                                         </div>
-                                        {(()=>{try{const l=[...(ex.logs||[])].find((l:any)=>l.completed&&l.loggedSets);if(!l)return null;const p=JSON.parse(l.loggedSets).filter((s:any)=>s.weight).map((s:any)=>s.weight);if(!p.length)return null;return <p className="text-xs text-amber-600 mb-2">Last: {p[p.length-1]}kg</p>}catch{return null}})()}
-                                        <div className="space-y-1.5">{(setsData[ex.id] || []).map((set: any, si: number) => (
+                                        {(()=>{try{const l=[...(b.ex.logs||[])].find((l:any)=>l.completed&&l.loggedSets);if(!l)return null;const p=JSON.parse(l.loggedSets).filter((s:any)=>s.weight).map((s:any)=>s.weight);if(!p.length)return null;return <p className="text-xs text-amber-600 mb-2">Last: {p[p.length-1]}kg</p>}catch{return null}})()}
+                                        <div className="space-y-1.5">{(setsData[b.ex.id] || []).map((set: any, si: number) => (
                                           <div key={si} className="flex items-center gap-2 text-xs bg-gray-50 rounded px-2 py-1.5">
                                             <span className="w-5 text-gray-400 font-medium">S{si + 1}</span>
                                             <div className="flex-1 flex items-center gap-1">
-                                              <input type="number" value={set.reps || ""} onChange={e => updateSet(ex.id, si, "reps", parseInt(e.target.value) || 0)} className="w-12 px-1 py-1 border rounded text-center text-xs" placeholder="Reps" min={0} />
+                                              <input type="number" value={set.reps || ""} onChange={e => updateSet(b.ex.id, si, "reps", parseInt(e.target.value) || 0)} className="w-12 px-1 py-1 border rounded text-center text-xs" placeholder="Reps" min={0} />
                                               <span className="text-gray-400">×</span>
-                                              <input type="number" value={set.weight || ""} onChange={e => updateSet(ex.id, si, "weight", parseFloat(e.target.value) || 0)} className="w-16 px-1 py-1 border rounded text-center text-xs font-medium" placeholder="kg" min={0} step={0.5} />
+                                              <input type="number" value={set.weight || ""} onChange={e => updateSet(b.ex.id, si, "weight", parseFloat(e.target.value) || 0)} className="w-16 px-1 py-1 border rounded text-center text-xs font-medium" placeholder="kg" min={0} step={0.5} />
                                               <span className="text-gray-400 text-xs">kg</span>
                                             </div>
-                                            <input type="number" value={set.rpe || ""} onChange={e => updateSet(ex.id, si, "rpe", parseInt(e.target.value) || undefined)} className="w-10 px-1 py-1 border rounded text-center text-xs" placeholder="RPE" min={1} max={10} />
+                                            <input type="number" value={set.rpe || ""} onChange={e => updateSet(b.ex.id, si, "rpe", parseInt(e.target.value) || undefined)} className="w-10 px-1 py-1 border rounded text-center text-xs" placeholder="RPE" min={1} max={10} />
                                           </div>
                                         ))}</div>
+                                      </div>
+                                    ) : (
+                                      <div key={`g${bi}`} className="bg-white rounded-lg p-3 border-2 border-purple-200">
+                                        <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                                          <span className="text-xs font-semibold text-purple-700">Superset {b.label}</span>
+                                          {b.restAfterSec ? <span className="text-xs text-gray-500">rest {fmtRest(b.restAfterSec)} after each round</span> : null}
+                                        </div>
+                                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-2">
+                                          {b.members.map((m: any, mi: number) => (
+                                            <span key={m.id} className="text-[10px] text-gray-500"><span className="text-purple-600 font-semibold">{b.label}{mi + 1}</span> {m.exercise.name} ({m.sets}×{m.reps})</span>
+                                          ))}
+                                        </div>
+                                        <div className="space-y-2">
+                                          {Array.from({ length: Math.max(...b.members.map((m: any) => (setsData[m.id] || []).length || m.sets || 0), 0) }).map((_, r) => (
+                                            <div key={r} className="rounded-lg bg-gray-50 p-2">
+                                              <p className="text-[10px] font-medium text-gray-500 mb-1">Round {r + 1}</p>
+                                              <div className="space-y-1.5">
+                                                {b.members.map((m: any, mi: number) => {
+                                                  const set = (setsData[m.id] || [])[r]
+                                                  if (!set) return null
+                                                  return (
+                                                    <div key={m.id} className="flex items-center gap-2 text-xs">
+                                                      <span className="w-6 text-purple-600 font-semibold">{b.label}{mi + 1}</span>
+                                                      <input type="number" value={set.reps || ""} onChange={e => updateSet(m.id, r, "reps", parseInt(e.target.value) || 0)} className="w-12 px-1 py-1 border rounded text-center text-xs" placeholder="Reps" min={0} />
+                                                      <span className="text-gray-400">×</span>
+                                                      <input type="number" value={set.weight || ""} onChange={e => updateSet(m.id, r, "weight", parseFloat(e.target.value) || 0)} className="w-16 px-1 py-1 border rounded text-center text-xs font-medium" placeholder="kg" min={0} step={0.5} />
+                                                      <span className="text-gray-400 text-xs">kg</span>
+                                                      <input type="number" value={set.rpe || ""} onChange={e => updateSet(m.id, r, "rpe", parseInt(e.target.value) || undefined)} className="w-10 px-1 py-1 border rounded text-center text-xs" placeholder="RPE" min={1} max={10} />
+                                                    </div>
+                                                  )
+                                                })}
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
                                     ))}
                                     <button onClick={completeWorkout} disabled={saving} className="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50">{saving ? "Saving..." : "✓ Complete Workout"}</button>

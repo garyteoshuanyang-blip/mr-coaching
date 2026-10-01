@@ -16,6 +16,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           days: {
             orderBy: { dayOrder: "asc" },
             include: {
+              groups: { orderBy: { sortOrder: "asc" } },
               exercises: {
                 include: { exercise: true, logs: { where: { clientId: user.id }, orderBy: { date: "desc" }, take: 3 } },
                 orderBy: { sortOrder: "asc" },

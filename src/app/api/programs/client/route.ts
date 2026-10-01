@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   const programs = await db.program.findMany({
     where: { clientId: user.id },
     include: {
-      weeks: { orderBy: { weekNumber: "asc" }, include: { days: { orderBy: { dayOrder: "asc" }, include: { exercises: { include: { exercise: true }, orderBy: { sortOrder: "asc" } } } } } },
+      weeks: { orderBy: { weekNumber: "asc" }, include: { days: { orderBy: { dayOrder: "asc" }, include: { groups: { orderBy: { sortOrder: "asc" } }, exercises: { include: { exercise: true }, orderBy: { sortOrder: "asc" } } } } } },
     },
     orderBy: { createdAt: "desc" },
   })

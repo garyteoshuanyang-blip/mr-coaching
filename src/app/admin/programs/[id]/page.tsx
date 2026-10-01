@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Trash2, Edit3, Users, CheckCircle, XCircle, Copy } from "lucide-react"
 import { getUser, authFetch } from "@/lib/client-auth"
+import { buildDayBlocks, fmtRest } from "@/lib/day-blocks"
 
 export default function ProgramDetailPage() {
   const params = useParams(); const router = useRouter()
@@ -64,10 +65,25 @@ export default function ProgramDetailPage() {
           <div className="bg-gray-50 px-4 py-3 border-b"><p className="font-medium text-sm">{week.name}</p></div>
           <div className="p-4 space-y-3">{week.days?.map((day:any)=><div key={day.id} className="border rounded-lg p-3">
             <p className="font-medium text-sm text-gray-700 mb-2">{day.dayName}</p>
-            <div className="space-y-1.5">{day.exercises?.map((ex:any)=><div key={ex.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-              <div><p className="text-sm font-medium">{ex.exercise.name} <span className="text-xs text-gray-400">({ex.exercise.muscleGroup})</span></p>
-              <p className="text-xs text-gray-500">{ex.sets}×{ex.reps}{ex.weight?` @ ${ex.weight}`:""}{ex.restSec?` · ${ex.restSec<60?`${ex.restSec}s`:`${ex.restSec/60}m`} rest`:""}{ex.rpe?` · RPE ${ex.rpe}`:""}</p></div>
-            </div>)}</div>
+            <div className="space-y-1.5">{buildDayBlocks(day).map((b:any, bi:number)=> b.kind === "single" ? (
+              <div key={b.ex.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                <div><p className="text-sm font-medium">{b.ex.exercise.name} <span className="text-xs text-gray-400">({b.ex.exercise.muscleGroup})</span></p>
+                <p className="text-xs text-gray-500">{b.ex.sets}×{b.ex.reps}{b.ex.weight?` @ ${b.ex.weight}`:""}{b.ex.restSec?` · ${fmtRest(b.ex.restSec)} rest`:""}{b.ex.rpe?` · RPE ${b.ex.rpe}`:""}</p></div>
+              </div>
+            ) : (
+              <div key={`g${bi}`} className="rounded-lg border-2 border-purple-200 bg-purple-50/50 p-2">
+                <div className="flex items-center justify-between px-1 pb-1.5">
+                  <span className="text-xs font-semibold text-purple-700">Superset {b.label}</span>
+                  {b.restAfterSec?<span className="text-xs text-gray-500">rest {fmtRest(b.restAfterSec)} after round</span>:null}
+                </div>
+                <div className="space-y-1.5">
+                  {b.members.map((ex:any, mi:number)=><div key={ex.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border">
+                    <div><p className="text-sm font-medium"><span className="text-purple-700 font-semibold mr-1">{b.label}{mi+1}</span>{ex.exercise.name} <span className="text-xs text-gray-400">({ex.exercise.muscleGroup})</span></p>
+                    <p className="text-xs text-gray-500">{ex.sets}×{ex.reps}{ex.weight?` @ ${ex.weight}`:""}{ex.rpe?` · RPE ${ex.rpe}`:""}</p></div>
+                  </div>)}
+                </div>
+              </div>
+            ))}</div>
           </div>)}</div>
         </div>)}
       </div>

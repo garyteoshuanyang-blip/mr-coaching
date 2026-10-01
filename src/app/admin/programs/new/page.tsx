@@ -3,8 +3,19 @@
 import { Suspense, useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, Save, X, Copy, Check } from "lucide-react"
+import { ArrowLeft, Plus, Save, X, Copy, Check, Link2 } from "lucide-react"
 import { getUser, authFetch } from "@/lib/client-auth"
+import { groupLabel } from "@/lib/group-label"
+
+let uidSeq = 0
+const uid = () => `r${Date.now().toString(36)}${(++uidSeq).toString(36)}`
+
+const REST_OPTIONS = [
+  { v: 30, l: "30s" }, { v: 60, l: "60s" }, { v: 90, l: "90s" },
+  { v: 120, l: "2m" }, { v: 180, l: "3m" },
+]
+
+const emptyDay = (n: number) => ({ dayName: `Day ${n}`, dayOrder: n, groups: [] as any[], exercises: [] as any[] })
 
 function NewProgramForm() {
   const router = useRouter()
@@ -12,7 +23,7 @@ function NewProgramForm() {
   const clientId = searchParams.get("clientId")
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [weeks, setWeeks] = useState([{ weekNumber: 1, name: "Week 1", days: [{ dayName: "Day 1", dayOrder: 1, exercises: [] as any[] }] }])
+  const [weeks, setWeeks] = useState([{ weekNumber: 1, name: "Week 1", days: [emptyDay(1)] }])
   const [exercises, setExercises] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
   const [picker, setPicker] = useState<{wi:number;di:number}|null>(null)
@@ -24,10 +35,11 @@ function NewProgramForm() {
   const [newExGroup, setNewExGroup] = useState("Chest")
   const [newExEquipment, setNewExEquipment] = useState("")
   const [creatingEx, setCreatingEx] = useState(false)
+  const [exSel, setExSel] = useState<Set<string>>(new Set())   // "wi-di-rowId" of exercises ticked for superset linking
 
   useEffect(()=>{if (!getUser()) window.location.href = "/admin/login"; authFetch("/api/exercises").then(r=>r.json()).then(d=>setExercises(d.exercises||[]))},[])
 
-  const makeWeek = (n: number) => ({ weekNumber: n, name: `Week ${n}`, days: [{ dayName: "Day 1", dayOrder: 1, exercises: [] as any[] }] })
+  const makeWeek = (n: number) => ({ weekNumber: n, name: `Week ${n}`, days: [emptyDay(1)] })
 
   useEffect(() => {
     setWeeks(Array.from({ length: duration }, (_, i) => makeWeek(i + 1)))
@@ -35,7 +47,7 @@ function NewProgramForm() {
 
   const filtered = exercises.filter(e=>e.name.toLowerCase().includes(searchTerm.toLowerCase())||e.muscleGroup.toLowerCase().includes(searchTerm.toLowerCase()))
 
-  const addWeek = () => { const n = weeks.length+1; setWeeks([...weeks, {weekNumber:n, name:`Week ${n}`, days:[{dayName:"Day 1", dayOrder:1, exercises:[]}]}]) }
+  const addWeek = () => { const n = weeks.length+1; setWeeks([...weeks, {weekNumber:n, name:`Week ${n}`, days:[emptyDay(1)]}]) }
   const removeWeek = (i:number) => setWeeks(weeks.filter((_,idx)=>idx!==i).map((w,idx)=>({...w, weekNumber:idx+1})))
 
   const copyWeek = (i:number) => {
@@ -57,39 +69,125 @@ function NewProgramForm() {
     setWeeks(newWeeks)
   }
 
-  const addDay = (wi:number) => { const w=[...weeks]; const o=w[wi].days.length+1; w[wi].days.push({dayName:`Day ${o}`, dayOrder:o, exercises:[]}); setWeeks(w) }
-  const removeDay = (wi:number, di:number) => { const w=[...weeks]; w[wi].days=w[wi].days.filter((_,i)=>i!==di).map((d,i)=>({...d,dayOrder:i+1})); setWeeks(w) }
+  const addDay = (wi:number) => { const w=[...weeks]; const o=w[wi].days.length+1; w[wi].days.push(emptyDay(o)); setWeeks(w) }
+  const removeDay = (wi:number, di:number) => { const w=[...weeks]; w[wi].days=w[wi].days.filter((_,i)=>i!==di).map((d,i)=>({...d,dayOrder:i+1})); setWeeks(w); setExSel(new Set()) }
+
+  const mkEx = (ex:any) => ({ rowId: uid(), groupKey: null as string|null, exerciseId:ex.id, exerciseName:ex.name, muscleGroup:ex.muscleGroup, sets:3, reps:"10", weight:"", restSec:60, rpe:"", notes:"", sortOrder:1 })
 
   const addEx = (wi:number, di:number, ex:any) => {
     const w=[...weeks]; const d=w[wi].days[di]
-    d.exercises.push({exerciseId:ex.id, exerciseName:ex.name, muscleGroup:ex.muscleGroup, sets:3, reps:"10", weight:"", restSec:60, rpe:"", notes:"", sortOrder:d.exercises.length+1})
+    const row = mkEx(ex); row.sortOrder = d.exercises.length+1
+    d.exercises = [...d.exercises, row]
     setWeeks(w)
   }
 
   const addSelectedExercises = () => {
     if (!picker || selectedEx.size === 0) return
     const w=[...weeks]; const d=w[picker.wi].days[picker.di]
+    const rows = [...d.exercises]
     exercises.filter(e => selectedEx.has(e.id)).forEach(ex => {
-      if (!d.exercises.find((x:any) => x.exerciseId === ex.id)) {
-        d.exercises.push({exerciseId:ex.id, exerciseName:ex.name, muscleGroup:ex.muscleGroup, sets:3, reps:"10", weight:"", restSec:60, rpe:"", notes:"", sortOrder:d.exercises.length+1})
+      if (!rows.find((x:any) => x.exerciseId === ex.id)) {
+        const row = mkEx(ex); row.sortOrder = rows.length + 1
+        rows.push(row)
       }
     })
+    w[picker.wi].days[picker.di].exercises = rows
     setWeeks(w)
     setSelectedEx(new Set())
     setPicker(null)
     setSearchTerm("")
+    setExSel(new Set())
   }
 
-  const removeEx = (wi:number, di:number, ei:number) => { const w=[...weeks]; w[wi].days[di].exercises=w[wi].days[di].exercises.filter((_,i)=>i!==ei).map((e,i)=>({...e,sortOrder:i+1})); setWeeks(w) }
+  const removeEx = (wi:number, di:number, ei:number) => {
+    const w=[...weeks]; const d=w[wi].days[di]
+    const removed = d.exercises[ei]
+    let exs = d.exercises.filter((_:any,i:number)=>i!==ei).map((e:any,i:number)=>({...e,sortOrder:i+1}))
+    let gs = d.groups || []
+    if (removed?.groupKey) {
+      const left = exs.filter((e:any)=>e.groupKey===removed.groupKey).length
+      if (left < 2) {   // a superset needs two — dissolve the leftovers
+        exs = exs.map((e:any)=> e.groupKey===removed.groupKey ? {...e, groupKey:null} : e)
+        gs = gs.filter((g:any)=>g.key!==removed.groupKey)
+      }
+    }
+    d.exercises = exs; d.groups = gs
+    setWeeks(w); setExSel(new Set())
+  }
+
   const updEx = (wi:number, di:number, ei:number, f:string, v:any) => { const w=[...weeks]; (w[wi].days[di].exercises[ei] as any)[f]=v; setWeeks(w) }
+
+  /* ---------- superset grouping ---------- */
+
+  const toggleExSel = (wi:number, di:number, rowId:string) => {
+    const k = `${wi}-${di}-${rowId}`
+    const next = new Set(exSel)
+    if (next.has(k)) next.delete(k); else next.add(k)
+    setExSel(next)
+  }
+
+  const linkSelected = (wi:number, di:number) => {
+    const w=[...weeks]; const d=w[wi].days[di]
+    const ids = d.exercises.filter((e:any)=>exSel.has(`${wi}-${di}-${e.rowId}`)).map((e:any)=>e.rowId)
+    if (ids.length !== 2) { alert("Tick exactly 2 exercises to link them as a superset."); return }
+    const key = uid()
+    const moving = d.exercises.filter((e:any)=>ids.includes(e.rowId)).map((e:any)=>({...e, groupKey:key}))
+    const firstIdx = d.exercises.findIndex((e:any)=>e.rowId===ids[0])
+    const rest = d.exercises.filter((e:any)=>!ids.includes(e.rowId))
+    const insertAt = d.exercises.slice(0, firstIdx).filter((e:any)=>!ids.includes(e.rowId)).length
+    const ordered = [...rest.slice(0,insertAt), ...moving, ...rest.slice(insertAt)].map((e:any,i:number)=>({...e,sortOrder:i+1}))
+    d.exercises = ordered
+    d.groups = [...(d.groups||[]), { key, restAfterSec: 90 }]
+    setWeeks(w); setExSel(new Set())
+  }
+
+  const unlinkGroup = (wi:number, di:number, key:string) => {
+    const w=[...weeks]; const d=w[wi].days[di]
+    d.exercises = d.exercises.map((e:any)=> e.groupKey===key ? {...e, groupKey:null} : e)
+    d.groups = (d.groups||[]).filter((g:any)=>g.key!==key)
+    setWeeks(w); setExSel(new Set())
+  }
+
+  const setGroupRest = (wi:number, di:number, key:string, v:number) => {
+    const w=[...weeks]; const d=w[wi].days[di]
+    d.groups = (d.groups||[]).map((g:any)=> g.key===key ? {...g, restAfterSec:v} : g)
+    setWeeks(w)
+  }
+
+  /* ---------- payload ---------- */
+
+  const buildPayloadWeeks = (wks:any[]) => wks.map((w:any)=>({
+    weekNumber: w.weekNumber,
+    name: w.name,
+    days: (w.days||[]).map((d:any)=>{
+      const orderedKeys: string[] = []
+      ;(d.exercises||[]).forEach((e:any)=>{ if (e.groupKey && !orderedKeys.includes(e.groupKey)) orderedKeys.push(e.groupKey) })
+      const keyToLabel = new Map<string,string>()
+      orderedKeys.forEach((k,i)=>keyToLabel.set(k, groupLabel(i)))
+      return {
+        dayName: d.dayName,
+        dayOrder: d.dayOrder,
+        groups: orderedKeys.map((k)=>({
+          label: keyToLabel.get(k),
+          restAfterSec: (d.groups||[]).find((g:any)=>g.key===k)?.restAfterSec ?? 90,
+        })),
+        exercises: (d.exercises||[]).map((e:any,i:number)=>({
+          exerciseId: e.exerciseId, sortOrder: i+1, sets: e.sets, reps: e.reps,
+          weight: e.weight, restSec: e.restSec, rpe: e.rpe, notes: e.notes,
+          groupLabel: e.groupKey ? keyToLabel.get(e.groupKey) : null,
+        })),
+      }
+    }),
+  }))
 
   const handleSubmit=async(e:React.FormEvent)=>{
     e.preventDefault();setSaving(true)
     // Auto-fill Week 1 exercises into all other weeks
-    const fillFromWeek1 = weeks.length > 1 && weeks[0].days.some(d => d.exercises.length > 0)
-    const wkData = fillFromWeek1
+    const fill = weeks.length > 1 && weeks[0].days.some(d => d.exercises.length > 0)
+    const raw = fill
       ? weeks.map((w, i) => i === 0 ? w : { ...w, days: JSON.parse(JSON.stringify(weeks[0].days)) })
       : weeks
+    const wkData = buildPayloadWeeks(raw)
     const res=await authFetch("/api/programs",{method:"POST",body:JSON.stringify({name,description:description||null,weeks:wkData})})
     if(!res.ok){alert("Failed");setSaving(false);return}
     const d=await res.json()
@@ -134,6 +232,79 @@ function NewProgramForm() {
     setCreatingEx(false)
   }
 
+  /* ---------- render ---------- */
+
+  const exCard = (wi:number, di:number, ei:number, ex:any, tag:string|null) => {
+    const selKey = `${wi}-${di}-${ex.rowId}`
+    const linkable = !ex.groupKey
+    return (
+      <div key={ex.rowId} className="flex items-start gap-2 bg-gray-50 rounded-lg p-3">
+        {linkable && (
+          <button type="button" onClick={()=>toggleExSel(wi,di,ex.rowId)} aria-label="Select for superset"
+            className={`mt-1 w-4 h-4 shrink-0 rounded border flex items-center justify-center ${exSel.has(selKey) ? "bg-purple-600 border-purple-600" : "border-gray-300 bg-white"}`}>
+            {exSel.has(selKey) && <Check size={11} className="text-white"/>}
+          </button>
+        )}
+        <div className="flex-1 space-y-1">
+          <p className="font-medium text-sm">
+            {tag && <span className="text-purple-700 font-semibold mr-1">{tag}</span>}
+            {ex.exerciseName} <span className="text-xs text-gray-400">({ex.muscleGroup})</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <div><label className="text-xs text-gray-500">Sets</label><input type="number" value={ex.sets} onChange={e=>updEx(wi,di,ei,"sets",parseInt(e.target.value)||1)} className="w-12 px-1 py-0.5 border rounded text-xs text-center" min={1}/></div>
+            <div><label className="text-xs text-gray-500">Reps</label><input type="text" value={ex.reps} onChange={e=>updEx(wi,di,ei,"reps",e.target.value)} className="w-14 px-1 py-0.5 border rounded text-xs text-center"/></div>
+            <div><label className="text-xs text-gray-500">Weight</label><input type="text" value={ex.weight||""} onChange={e=>updEx(wi,di,ei,"weight",e.target.value)} className="w-16 px-1 py-0.5 border rounded text-xs text-center" placeholder="kg"/></div>
+            {!ex.groupKey && (
+              <div><label className="text-xs text-gray-500">Rest</label><select value={ex.restSec} onChange={e=>updEx(wi,di,ei,"restSec",parseInt(e.target.value))} className="w-16 px-1 py-0.5 border rounded text-xs">{REST_OPTIONS.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select></div>
+            )}
+            <div><label className="text-xs text-gray-500">RPE</label><input type="text" value={ex.rpe} onChange={e=>updEx(wi,di,ei,"rpe",e.target.value)} className="w-12 px-1 py-0.5 border rounded text-xs text-center"/></div>
+          </div>
+          <input type="text" value={ex.notes} onChange={e=>updEx(wi,di,ei,"notes",e.target.value)} className="w-full text-xs text-gray-500 bg-transparent p-0" placeholder="Notes"/>
+        </div>
+        <button type="button" onClick={()=>removeEx(wi,di,ei)} className="text-red-300 hover:text-red-500"><X size={14}/></button>
+      </div>
+    )
+  }
+
+  const dayExercises = (wi:number, di:number, day:any) => {
+    const out: any[] = []
+    const seen = new Set<string>()
+    day.exercises.forEach((ex:any, ei:number)=>{
+      if (ex.groupKey) {
+        if (seen.has(ex.groupKey)) return
+        seen.add(ex.groupKey)
+        const gi = (day.groups||[]).findIndex((g:any)=>g.key===ex.groupKey)
+        const label = groupLabel(gi < 0 ? 0 : gi)
+        const members = day.exercises.map((e:any,i:number)=>({e,i})).filter(({e}:any)=>e.groupKey===ex.groupKey)
+        out.push(
+          <div key={ex.groupKey} className="rounded-lg border-2 border-purple-200 bg-purple-50/50 p-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap px-1 pb-2">
+              <span className="text-xs font-semibold text-purple-700">Superset {label}</span>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-500">Rest after round</label>
+                <select value={(day.groups||[])[gi]?.restAfterSec ?? 90} onChange={e=>setGroupRest(wi,di,ex.groupKey,parseInt(e.target.value))} className="w-16 px-1 py-0.5 border rounded text-xs">
+                  {REST_OPTIONS.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}
+                </select>
+                <button type="button" onClick={()=>unlinkGroup(wi,di,ex.groupKey)} className="text-xs text-red-500 hover:text-red-700">Unlink</button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {members.map(({e,i}:any, mi:number)=> exCard(wi, di, i, e, `${label}${mi+1}`))}
+            </div>
+          </div>
+        )
+      } else {
+        out.push(exCard(wi, di, ei, ex, null))
+      }
+    })
+    return out
+  }
+
+  const selCountForDay = (wi:number, di:number) => {
+    const d = weeks[wi].days[di]
+    return d.exercises.filter((e:any)=>exSel.has(`${wi}-${di}-${e.rowId}`)).length
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24 md:pb-4">
       <header className="bg-white border-b sticky top-0 z-50 px-4 h-14 flex items-center"><div className="flex items-center gap-3"><Link href={clientId ? `/admin/clients/${clientId}` : "/admin/programs"} className="p-1 hover:bg-gray-100"><ArrowLeft size={20} className="text-gray-500"/></Link><h1 className="font-semibold">New Program{clientId ? " for Client" : ""}</h1></div></header>
@@ -171,23 +342,14 @@ function NewProgramForm() {
                     {week.days.length>1&&<button type="button" onClick={()=>removeDay(wi,di)} className="text-red-400 text-xs">Remove</button>}
                   </div>
                   <div className="space-y-2">
-                    {day.exercises.map((ex:any,ei:number)=>(
-                      <div key={ei} className="flex items-start gap-2 bg-gray-50 rounded-lg p-3">
-                        <div className="flex-1 space-y-1">
-                          <p className="font-medium text-sm">{ex.exerciseName} <span className="text-xs text-gray-400">({ex.muscleGroup})</span></p>
-                          <div className="flex flex-wrap gap-2">
-                            <div><label className="text-xs text-gray-500">Sets</label><input type="number" value={ex.sets} onChange={e=>updEx(wi,di,ei,"sets",parseInt(e.target.value)||1)} className="w-12 px-1 py-0.5 border rounded text-xs text-center" min={1}/></div>
-                            <div><label className="text-xs text-gray-500">Reps</label><input type="text" value={ex.reps} onChange={e=>updEx(wi,di,ei,"reps",e.target.value)} className="w-14 px-1 py-0.5 border rounded text-xs text-center"/></div>
-                            <div><label className="text-xs text-gray-500">Weight</label><input type="text" value={ex.weight||""} onChange={e=>updEx(wi,di,ei,"weight",e.target.value)} className="w-16 px-1 py-0.5 border rounded text-xs text-center" placeholder="kg"/></div>
-                            <div><label className="text-xs text-gray-500">Rest</label><select value={ex.restSec} onChange={e=>updEx(wi,di,ei,"restSec",parseInt(e.target.value))} className="w-16 px-1 py-0.5 border rounded text-xs"><option value={30}>30s</option><option value={60}>60s</option><option value={90}>90s</option><option value={120}>2m</option><option value={180}>3m</option></select></div>
-                            <div><label className="text-xs text-gray-500">RPE</label><input type="text" value={ex.rpe} onChange={e=>updEx(wi,di,ei,"rpe",e.target.value)} className="w-12 px-1 py-0.5 border rounded text-xs text-center"/></div>
-                          </div>
-                          <input type="text" value={ex.notes} onChange={e=>updEx(wi,di,ei,"notes",e.target.value)} className="w-full text-xs text-gray-500 bg-transparent p-0" placeholder="Notes"/>
-                        </div>
-                        <button type="button" onClick={()=>removeEx(wi,di,ei)} className="text-red-300 hover:text-red-500"><X size={14}/></button>
-                      </div>
-                    ))}
-                    <button type="button" onClick={()=>{setPicker({wi,di});setSelectedEx(new Set());setSearchTerm("");setShowNewExercise(false)}} className="text-sm text-blue-600 hover:text-blue-700"><Plus size={14}/> Add exercise</button>
+                    {dayExercises(wi, di, day)}
+                    <div className="flex items-center gap-3 flex-wrap pt-1">
+                      <button type="button" onClick={()=>{setPicker({wi,di});setSelectedEx(new Set());setSearchTerm("");setShowNewExercise(false)}} className="text-sm text-blue-600 hover:text-blue-700"><Plus size={14}/> Add exercise</button>
+                      <button type="button" disabled={selCountForDay(wi,di)!==2} onClick={()=>linkSelected(wi,di)}
+                        className="text-sm text-purple-600 hover:text-purple-800 disabled:text-gray-300 disabled:cursor-default flex items-center gap-1">
+                        <Link2 size={14}/> Link as superset{selCountForDay(wi,di)>0?` (${selCountForDay(wi,di)})`:""}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

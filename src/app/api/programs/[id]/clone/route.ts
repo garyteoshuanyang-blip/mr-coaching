@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getAuthUser, unauth } from "@/lib/auth-utils"
+import { cloneGroups } from "@/lib/program-groups"
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -62,6 +63,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     },
     select: { id: true, name: true },
   })
+
+  // Mirror superset groups onto the clone
+  await cloneGroups(original.id, cloned.id)
 
   return NextResponse.json({ id: cloned.id, name: cloned.name }, { status: 201 })
 }
