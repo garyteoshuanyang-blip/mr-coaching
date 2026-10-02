@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getAuthUser, unauth } from "@/lib/auth-utils"
+import { DAY_INCLUDE } from "@/lib/program-groups"
+import { computeEditImpact, diffApplyWeeks } from "@/lib/program-update"
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -36,8 +38,33 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params
   const user = await getAuthUser(req)
   if (!user || user.role !== "admin") return unauth()
-  const { name, description, status } = await req.json()
-  const program = await db.program.update({ where: { id }, data: { name, description, status } })
+  const body = await req.json()
+  const { name, description, status, weeks, confirmDeleteLogs } = body
+
+  // No structure in the payload → legacy metadata-only update (unchanged behaviour).
+  if (!Array.isArray(weeks)) {
+    const program = await db.program.update({ where: { id }, data: { name, description, status } })
+    return NextResponse.json({ program })
+  }
+
+  // Guard: refuse an edit that would delete logged history unless confirmed.
+  if (!confirmDeleteLogs) {
+    const impact = await computeEditImpact(id, weeks)
+    if (impact.logsToDelete > 0) {
+      return NextResponse.json(
+        { error: "would_delete_logs", logsToDelete: impact.logsToDelete },
+        { status: 409 }
+      )
+    }
+  }
+
+  await db.program.update({ where: { id }, data: { name, description, status } })
+  await diffApplyWeeks(id, weeks)
+
+  const program = await db.program.findUnique({
+    where: { id },
+    include: { weeks: { orderBy: { weekNumber: "asc" }, include: { days: DAY_INCLUDE } } },
+  })
   return NextResponse.json({ program })
 }
 
