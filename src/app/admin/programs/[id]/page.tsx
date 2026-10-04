@@ -7,6 +7,33 @@ import { ArrowLeft, Trash2, Edit3, Users, CheckCircle, XCircle, Copy, Pencil } f
 import { getUser, authFetch } from "@/lib/client-auth"
 import { buildDayBlocks, fmtRest } from "@/lib/day-blocks"
 
+/** Format the weights the client actually logged on their most recent session. */
+function lastLoggedLine(ex: any): string | null {
+  const log = ex?.logs?.find((l: any) => l.loggedSets)
+  if (!log) return null
+  try {
+    const sets = JSON.parse(log.loggedSets)
+    if (!Array.isArray(sets) || sets.length === 0) return null
+    const ws = sets
+      .map((s: any) => s.weight)
+      .filter((w: any) => w !== null && w !== undefined && w !== "")
+    if (ws.length === 0) return null
+    const uniq = Array.from(new Set(ws.map((w: any) => String(w))))
+    const weightStr = uniq.length === 1 ? `${uniq[0]} kg` : `${uniq.join(" / ")} kg`
+    const date = new Date(log.date).toLocaleDateString("en-SG", { day: "numeric", month: "short" })
+    return `${weightStr} · ${date}`
+  } catch {
+    return null
+  }
+}
+
+/** Inline "logged 70 / 72.5 / 75 kg · 4 Oct". Renders nothing when unlogged. */
+function LoggedWeights({ ex }: { ex: any }) {
+  const line = lastLoggedLine(ex)
+  if (!line) return null
+  return <p className="text-xs font-medium text-emerald-600 mt-0.5">logged {line}</p>
+}
+
 export default function ProgramDetailPage() {
   const params = useParams(); const router = useRouter()
   const [program, setProgram] = useState<any>(null); const [loading, setLoading] = useState(true)
@@ -69,7 +96,8 @@ export default function ProgramDetailPage() {
             <div className="space-y-1.5">{buildDayBlocks(day).map((b:any, bi:number)=> b.kind === "single" ? (
               <div key={b.ex.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                 <div><p className="text-sm font-medium">{b.ex.exercise.name} <span className="text-xs text-gray-400">({b.ex.exercise.muscleGroup})</span></p>
-                <p className="text-xs text-gray-500">{b.ex.sets}×{b.ex.reps}{b.ex.weight?` @ ${b.ex.weight}`:""}{b.ex.restSec?` · ${fmtRest(b.ex.restSec)} rest`:""}{b.ex.rpe?` · RPE ${b.ex.rpe}`:""}</p></div>
+                <p className="text-xs text-gray-500">{b.ex.sets}×{b.ex.reps}{b.ex.weight?` @ ${b.ex.weight}`:""}{b.ex.restSec?` · ${fmtRest(b.ex.restSec)} rest`:""}{b.ex.rpe?` · RPE ${b.ex.rpe}`:""}</p>
+                <LoggedWeights ex={b.ex} /></div>
               </div>
             ) : (
               <div key={`g${bi}`} className="rounded-lg border-2 border-purple-200 bg-purple-50/50 p-2">
@@ -80,7 +108,8 @@ export default function ProgramDetailPage() {
                 <div className="space-y-1.5">
                   {b.members.map((ex:any, mi:number)=><div key={ex.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border">
                     <div><p className="text-sm font-medium"><span className="text-purple-700 font-semibold mr-1">{b.label}{mi+1}</span>{ex.exercise.name} <span className="text-xs text-gray-400">({ex.exercise.muscleGroup})</span></p>
-                    <p className="text-xs text-gray-500">{ex.sets}×{ex.reps}{ex.weight?` @ ${ex.weight}`:""}{ex.rpe?` · RPE ${ex.rpe}`:""}</p></div>
+                    <p className="text-xs text-gray-500">{ex.sets}×{ex.reps}{ex.weight?` @ ${ex.weight}`:""}{ex.rpe?` · RPE ${ex.rpe}`:""}</p>
+                    <LoggedWeights ex={ex} /></div>
                   </div>)}
                 </div>
               </div>

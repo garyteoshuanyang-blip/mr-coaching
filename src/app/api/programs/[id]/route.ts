@@ -8,6 +8,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params
   const user = await getAuthUser(req)
   if (!user) return unauth()
+
+  // 🔴 Whose workout logs get attached? The PROGRAM'S CLIENT — never the viewer.
+  // This used to filter on `user.id`, so an admin (who never logs workouts)
+  // always received zero logs: the program page's progress bar read 0% and no
+  // logged weights were available anywhere on the screen. It only looked
+  // correct when a client opened their own program, which is why it hid.
+  const owner = await db.program.findUnique({ where: { id }, select: { clientId: true } })
+  if (!owner) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (user.role === "client" && owner.clientId !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+  // Templates (clientId null) have no client, so attach no logs.
+  const logClientId = owner.clientId ?? "__template__"
+
   const program = await db.program.findUnique({
     where: { id },
     include: {
@@ -20,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             include: {
               groups: { orderBy: { sortOrder: "asc" } },
               exercises: {
-                include: { exercise: true, logs: { where: { clientId: user.id }, orderBy: { date: "desc" }, take: 3 } },
+                include: { exercise: true, logs: { where: { clientId: logClientId }, orderBy: { date: "desc" }, take: 3 } },
                 orderBy: { sortOrder: "asc" },
               },
             },
@@ -30,7 +44,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     },
   })
   if (!program) return NextResponse.json({ error: "Not found" }, { status: 404 })
-  if (user.role === "client" && program.clientId !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   return NextResponse.json(program)
 }
 
